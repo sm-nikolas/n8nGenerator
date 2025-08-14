@@ -5,6 +5,7 @@ import { useAuth } from './hooks/useAuth';
 import { useWorkflows } from './hooks/useWorkflows';
 import { useMessages } from './hooks/useMessages';
 import { useAppState } from './hooks/useAppState';
+import { ViewType } from './hooks/useRouter';
 import { AuthModal } from './components/AuthModal';
 import { LandingPage } from './components/LandingPage';
 import { Layout } from './components/Layout';
@@ -193,7 +194,7 @@ function App() {
     navigateToWorkflow(workflow, 'chat');
   };
 
-  const handleViewChange = (newView: 'chat' | 'workflow' | 'preview') => {
+  const handleViewChange = (newView: ViewType) => {
     if (newView === view) return;
     navigateToView(newView);
   };

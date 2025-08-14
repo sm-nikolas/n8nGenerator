@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Workflow } from '../types';
-import { useRouter } from './useRouter';
+import { useRouter, ViewType } from './useRouter';
 
 interface AppState {
   currentWorkflow: Workflow | null;
@@ -10,7 +10,7 @@ interface AppState {
 }
 
 export function useAppState() {
-  const { workflowId, view, navigate, resetToDefault } = useRouter();
+  const { workflowId, view, navigateToView, navigateToWorkflow, navigateToNewChat } = useRouter();
   
   const [state, setState] = useState<AppState>({
     currentWorkflow: null,
@@ -47,29 +47,29 @@ export function useAppState() {
   // Função para resetar o estado da aplicação
   const resetAppState = useCallback(() => {
     setCurrentWorkflow(null);
-    resetToDefault();
-  }, [setCurrentWorkflow, resetToDefault]);
+    navigateToNewChat();
+  }, [setCurrentWorkflow, navigateToNewChat]);
 
   // Função para navegar para um workflow específico
-  const navigateToWorkflow = useCallback((workflow: Workflow, view: 'chat' | 'workflow' | 'preview' = 'chat') => {
+  const navigateToWorkflowHandler = useCallback((workflow: Workflow, view: ViewType = 'chat') => {
     setCurrentWorkflow(workflow);
-    navigate(workflow.id, view);
-  }, [setCurrentWorkflow, navigate]);
+    navigateToWorkflow(workflow.id, view);
+  }, [setCurrentWorkflow, navigateToWorkflow]);
 
   // Função para navegar para uma nova conversa
-  const navigateToNewChat = useCallback(() => {
+  const navigateToNewChatHandler = useCallback(() => {
     setCurrentWorkflow(null);
-    resetToDefault();
-  }, [setCurrentWorkflow, resetToDefault]);
+    navigateToNewChat();
+  }, [setCurrentWorkflow, navigateToNewChat]);
 
   // Função para navegar para uma view específica
-  const navigateToView = useCallback((newView: 'chat' | 'workflow' | 'preview') => {
+  const navigateToViewHandler = useCallback((newView: ViewType) => {
     if (state.currentWorkflow) {
-      navigate(state.currentWorkflow.id, newView);
+      navigateToView(newView);
     } else if (newView === 'chat') {
-      resetToDefault();
+      navigateToNewChat();
     }
-  }, [state.currentWorkflow, navigate, resetToDefault]);
+  }, [state.currentWorkflow, navigateToView, navigateToNewChat]);
 
   // Sincronizar o estado com o roteamento
   useEffect(() => {
@@ -95,12 +95,8 @@ export function useAppState() {
     setCurrentWorkflow,
     setLoading,
     resetAppState,
-    navigateToWorkflow,
-    navigateToNewChat,
-    navigateToView,
-    
-    // Funções do router
-    navigate,
-    resetToDefault,
+    navigateToWorkflow: navigateToWorkflowHandler,
+    navigateToNewChat: navigateToNewChatHandler,
+    navigateToView: navigateToViewHandler,
   };
 }

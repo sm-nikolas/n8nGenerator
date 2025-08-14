@@ -6,6 +6,8 @@ import { WorkflowCanvas } from './WorkflowCanvas';
 import { PreviewPanel } from './PreviewPanel';
 import { Workflow } from '../types';
 
+import { ViewType } from '../hooks/useRouter';
+
 interface LayoutProps {
   user: any;
   workflows: Workflow[];
@@ -13,9 +15,9 @@ interface LayoutProps {
   messages: any[];
   isLoading: boolean;
   sidebarOpen: boolean;
-  view: 'chat' | 'workflow' | 'preview';
+  view: ViewType;
   onToggleSidebar: () => void;
-  onViewChange: (view: 'chat' | 'workflow' | 'preview') => void;
+  onViewChange: (view: ViewType) => void;
   onSelectWorkflow: (workflow: Workflow) => void;
   onNewWorkflow: () => void;
   onDeleteWorkflow: (workflowId: string) => void;

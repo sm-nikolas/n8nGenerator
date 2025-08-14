@@ -4,11 +4,13 @@ import { useAuth } from '../hooks/useAuth';
 import { Workflow } from '../types';
 import { User } from '@supabase/supabase-js';
 
+import { ViewType } from '../hooks/useRouter';
+
 interface HeaderProps {
   user: User;
   onToggleSidebar: () => void;
-  activeView: 'chat' | 'workflow' | 'preview';
-  onViewChange: (view: 'chat' | 'workflow' | 'preview') => void;
+  activeView: ViewType;
+  onViewChange: (view: ViewType) => void;
   currentWorkflow: Workflow | null;
 }
 
@@ -74,7 +76,7 @@ export const Header = memo(function Header({
     await signOut();
   }, [signOut]);
 
-  const handleViewChange = useCallback((view: 'chat' | 'workflow' | 'preview') => {
+  const handleViewChange = useCallback((view: ViewType) => {
     onViewChange(view);
   }, [onViewChange]);
 
