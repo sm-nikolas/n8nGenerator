@@ -1,6 +1,35 @@
 export interface Database {
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          id: string;
+          title: string;
+          user_id: string;
+          workflow_id: string | null;
+          created_at: string;
+          updated_at: string;
+          last_message_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          user_id: string;
+          workflow_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          last_message_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          user_id?: string;
+          workflow_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          last_message_at?: string;
+        };
+      };
       workflows: {
         Row: {
           id: string;
@@ -45,7 +74,10 @@ export interface Database {
           content: string;
           type: 'user' | 'assistant';
           workflow_id: string | null;
+          conversation_id: string | null;
           user_id: string;
+          message_order: number;
+          metadata: any;
           created_at: string;
         };
         Insert: {
@@ -53,7 +85,10 @@ export interface Database {
           content: string;
           type: 'user' | 'assistant';
           workflow_id?: string | null;
+          conversation_id?: string | null;
           user_id: string;
+          message_order?: number;
+          metadata?: any;
           created_at?: string;
         };
         Update: {
@@ -61,7 +96,10 @@ export interface Database {
           content?: string;
           type?: 'user' | 'assistant';
           workflow_id?: string | null;
+          conversation_id?: string | null;
           user_id?: string;
+          message_order?: number;
+          metadata?: any;
           created_at?: string;
         };
       };

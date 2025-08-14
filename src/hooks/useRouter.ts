@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Workflow } from '../types';
+import { Workflow, Conversation } from '../types';
 import { validateURLParams, normalizeURL, createNewChatURL } from '../utils/urlValidation';
 
 interface RouterState {
   workflowId: string | null;
+  conversationId: string | null;
   view: 'chat' | 'workflow' | 'preview';
 }
 
@@ -11,80 +12,53 @@ export function useRouter() {
   const [state, setState] = useState<RouterState>(() => {
     // Inicializar estado a partir da URL
     const currentURL = window.location.href;
-    const validation = validateURLParams(currentURL);
+    const urlObj = new URL(currentURL);
+    const workflowId = urlObj.searchParams.get('workflow');
+    const conversationId = urlObj.searchParams.get('conversation');
+    const view = (urlObj.searchParams.get('view') as 'chat' | 'workflow' | 'preview') || 'chat';
     
-    // Se a URL não é válida, normalizar e definir estado padrão
-    if (!validation.isValid) {
-      const normalizedURL = normalizeURL(currentURL);
-      window.history.replaceState({ workflowId: null, view: 'chat' }, '', normalizedURL);
-      
-      return {
-        workflowId: null,
-        view: 'chat'
-      };
-    }
-    
-    // Se não há parâmetros na URL, definir estado padrão de novo chat
-    if (!validation.workflowId && !validation.view) {
-      const newChatURL = createNewChatURL(currentURL);
-      window.history.replaceState({ workflowId: null, view: 'chat' }, '', newChatURL);
-      
-      return {
-        workflowId: null,
-        view: 'chat'
-      };
-    }
-    
-    // Se há workflow mas não há view, definir view como 'chat'
-    if (validation.workflowId && !validation.view) {
-      const url = new URL(currentURL);
-      url.searchParams.set('view', 'chat');
-      window.history.replaceState({ workflowId: validation.workflowId, view: 'chat' }, '', url.toString());
-      
-      return {
-        workflowId: validation.workflowId,
-        view: 'chat'
-      };
-    }
-    
-    // Se há view mas não há workflow, definir workflowId como null
-    if (!validation.workflowId && validation.view) {
-      const url = new URL(currentURL);
-      url.searchParams.delete('workflow');
-      window.history.replaceState({ workflowId: null, view: validation.view }, '', url.toString());
-      
-      return {
-        workflowId: null,
-        view: validation.view
-      };
-    }
-    
-    // Caso padrão: retornar os valores validados
     return {
-      workflowId: validation.workflowId,
-      view: validation.view
+      workflowId,
+      conversationId,
+      view
     };
   });
 
-  const updateURL = useCallback((workflowId: string | null, view: 'chat' | 'workflow' | 'preview') => {
+  const updateURL = useCallback((
+    workflowId: string | null, 
+    view: 'chat' | 'workflow' | 'preview',
+    conversationId?: string | null
+  ) => {
     const url = new URL(window.location.href);
     
     if (workflowId) {
       url.searchParams.set('workflow', workflowId);
+      url.searchParams.delete('conversation'); // Remove conversation when setting workflow
     } else {
       url.searchParams.delete('workflow');
+    }
+    
+    if (conversationId) {
+      url.searchParams.set('conversation', conversationId);
+      url.searchParams.delete('workflow'); // Remove workflow when setting conversation
+    } else if (!workflowId) {
+      url.searchParams.delete('conversation');
     }
     
     url.searchParams.set('view', view);
     
     // Usar pushState para navegação, mas não disparar popstate
-    window.history.pushState({ workflowId, view }, '', url.toString());
+    window.history.pushState({ workflowId, conversationId, view }, '', url.toString());
     
-    setState({ workflowId, view });
+    setState({ workflowId, conversationId, view });
   }, []);
 
-  const navigate = useCallback((workflowId: string | null, view: 'chat' | 'workflow' | 'preview') => {
-    updateURL(workflowId, view);
+  const navigate = useCallback((
+    workflowId: string | null, 
+    view: 'chat' | 'workflow' | 'preview',
+    conversationId?: string | null
+  ) => {
+    updateURL(workflowId, view, conversationId);
   }, [updateURL]);
 
   // Escutar mudanças na URL (navegação do browser)
@@ -95,23 +69,16 @@ export function useRouter() {
       } else {
         // Fallback para quando não há state (ex: refresh da página)
         const currentURL = window.location.href;
-        const validation = validateURLParams(currentURL);
+        const urlObj = new URL(currentURL);
+        const workflowId = urlObj.searchParams.get('workflow');
+        const conversationId = urlObj.searchParams.get('conversation');
+        const view = (urlObj.searchParams.get('view') as 'chat' | 'workflow' | 'preview') || 'chat';
         
-        // Se a URL não é válida, normalizar e definir estado padrão
-        if (!validation.isValid) {
-          const normalizedURL = normalizeURL(currentURL);
-          window.history.replaceState({ workflowId: null, view: 'chat' }, '', normalizedURL);
-          
-          setState({
-            workflowId: null,
-            view: 'chat'
-          });
-        } else {
-          setState({
-            workflowId: validation.workflowId,
-            view: validation.view
-          });
-        }
+        setState({
+          workflowId,
+          conversationId,
+          view
+        });
       }
     };
 
@@ -121,11 +88,12 @@ export function useRouter() {
 
   // Função para resetar para o estado padrão (novo chat)
   const resetToDefault = useCallback(() => {
-    navigate(null, 'chat');
+    navigate(null, 'chat', null);
   }, [navigate]);
 
   return {
     workflowId: state.workflowId,
+    conversationId: state.conversationId,
     view: state.view,
     navigate,
     updateURL,
