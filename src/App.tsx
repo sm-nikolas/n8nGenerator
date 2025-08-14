@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './hooks/useAuth';
 import { useWorkflows } from './hooks/useWorkflows';
 import { useMessages } from './hooks/useMessages';
+import { useConversations } from './hooks/useConversations';
 import { useAppState } from './hooks/useAppState';
 import { ViewType } from './hooks/useRouter';
 import { AuthModal } from './components/AuthModal';
@@ -11,7 +12,7 @@ import { LandingPage } from './components/LandingPage';
 import { Layout } from './components/Layout';
 import { LoadingScreen } from './components/LoadingScreen';
 import { GoogleAuthCallback } from './components/GoogleAuthCallback';
-import { Message, Workflow } from './types';
+import { Message, Workflow, Conversation } from './types';
 
 // Função para gerar workflow mock
 const generateMockWorkflow = (prompt: string): Workflow => {
@@ -52,21 +53,26 @@ const generateMockWorkflow = (prompt: string): Workflow => {
 function App() {
   const { user, loading: authLoading } = useAuth();
   const { workflows, saveWorkflow, deleteWorkflow } = useWorkflows(user?.id);
-  const { messages, saveMessage, clearMessages, fetchMessagesForWorkflow } = useMessages(user?.id);
+  const { conversations, createConversation, deleteConversation: removeConversation } = useConversations(user?.id);
+  const { messages, saveMessage, clearMessages, fetchMessagesForConversation, fetchMessagesForWorkflow } = useMessages(user?.id);
   
   const {
     currentWorkflow,
+    currentConversation,
     isLoading,
     sidebarOpen,
     showAuthModal,
     view,
     workflowId,
+    conversationId,
     toggleSidebar,
     setAuthModal,
     setCurrentWorkflow,
+    setCurrentConversation,
     setLoading,
     resetAppState,
     navigateToWorkflow,
+    navigateToConversation,
     navigateToNewChat,
     navigateToView,
   } = useAppState();
@@ -83,31 +89,55 @@ function App() {
         resetAppState();
         clearMessages();
       }
+    } else if (user && conversations && conversationId) {
+      const conversation = conversations.find(c => c.id === conversationId);
+      if (conversation) {
+        setCurrentConversation(conversation);
+        fetchMessagesForConversation(conversationId);
+      } else {
+        // Conversa não encontrada, limpar URL e estado
+        resetAppState();
+        clearMessages();
+      }
     } else {
       // Sem workflow na URL, garantir estado inicial limpo
       setCurrentWorkflow(null);
+      setCurrentConversation(null);
       clearMessages();
     }
-  }, [user, workflows, workflowId, setCurrentWorkflow, resetAppState, fetchMessagesForWorkflow, clearMessages]);
+  }, [user, workflows, conversations, workflowId, conversationId, setCurrentWorkflow, setCurrentConversation, resetAppState, fetchMessagesForWorkflow, fetchMessagesForConversation, clearMessages]);
 
   // Carregar mensagens quando o workflow mudar
   useEffect(() => {
     if (user && currentWorkflow) {
       fetchMessagesForWorkflow(currentWorkflow.id);
+    } else if (user && currentConversation) {
+      fetchMessagesForConversation(currentConversation.id);
     }
-  }, [currentWorkflow?.id, user, fetchMessagesForWorkflow]);
+  }, [currentWorkflow?.id, currentConversation?.id, user, fetchMessagesForWorkflow, fetchMessagesForConversation]);
 
-  const addMessage = async (message: Omit<Message, 'id' | 'timestamp'>, workflowId?: string) => {
+  const addMessage = async (
+    message: Omit<Message, 'id' | 'timestamp' | 'messageOrder'>, 
+    conversationId?: string,
+    workflowId?: string
+  ) => {
     if (!user) {
       setAuthModal(true);
       return;
     }
     
     try {
-      const savedMessage = await saveMessage(message, workflowId);
+      const savedMessage = await saveMessage(message, conversationId, workflowId);
       if (savedMessage.workflow) {
         setCurrentWorkflow(savedMessage.workflow);
         navigateToWorkflow(savedMessage.workflow, 'chat');
+      } else if (savedMessage.conversationId && !conversationId) {
+        // Nova conversa foi criada automaticamente
+        const newConversation = conversations.find(c => c.id === savedMessage.conversationId);
+        if (newConversation) {
+          setCurrentConversation(newConversation);
+          navigateToConversation(newConversation, 'chat');
+        }
       }
     } catch (error) {
       console.error('Erro ao salvar mensagem:', error);
@@ -122,11 +152,23 @@ function App() {
     
     setLoading(true);
     
-    // Add user message
+    // Criar nova conversa se não houver uma atual
+    let activeConversationId = currentConversation?.id;
+    if (!activeConversationId) {
+      const title = prompt.length > 50 ? prompt.substring(0, 47) + '...' : prompt;
+      const newConversation = await createConversation(title);
+      if (newConversation) {
+        setCurrentConversation(newConversation);
+        activeConversationId = newConversation.id;
+        navigateToConversation(newConversation, 'chat');
+      }
+    }
+
+    // Add user message to conversation
     await addMessage({
       type: 'user',
       content: prompt,
-    });
+    }, activeConversationId);
 
     // Simulate workflow generation
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -142,7 +184,7 @@ function App() {
         type: 'assistant',
         content: `I've created a custom n8n workflow based on your request. The workflow includes ${workflow.nodes.length} nodes and is ready to use.`,
         workflow: savedWorkflow,
-      }, savedWorkflow.id);
+      }, activeConversationId, savedWorkflow.id);
       
       setCurrentWorkflow(savedWorkflow);
       navigateToWorkflow(savedWorkflow, 'workflow');
@@ -151,7 +193,7 @@ function App() {
       await addMessage({
         type: 'assistant',
         content: 'Sorry, there was an error saving the workflow. Please try again.',
-      });
+      }, activeConversationId);
     }
     
     setLoading(false);
@@ -183,15 +225,38 @@ function App() {
     }
   };
 
+  const handleDeleteConversation = async (conversationId: string) => {
+    if (!user) return;
+    
+    try {
+      await removeConversation(conversationId);
+      if (currentConversation?.id === conversationId) {
+        setCurrentConversation(null);
+        resetAppState();
+        clearMessages();
+      }
+    } catch (error) {
+      console.error('Erro ao deletar conversa:', error);
+    }
+  };
+
   const handleNewWorkflow = () => {
     setCurrentWorkflow(null);
+    setCurrentConversation(null);
     navigateToNewChat();
     clearMessages();
   };
 
   const handleSelectWorkflow = async (workflow: Workflow) => {
     setCurrentWorkflow(workflow);
+    setCurrentConversation(null);
     navigateToWorkflow(workflow, 'chat');
+  };
+
+  const handleSelectConversation = async (conversation: Conversation) => {
+    setCurrentConversation(conversation);
+    setCurrentWorkflow(null);
+    navigateToConversation(conversation, 'chat');
   };
 
   const handleViewChange = (newView: ViewType) => {
@@ -223,7 +288,9 @@ function App() {
               <Layout
                 user={user}
                 workflows={workflows}
+                conversations={conversations}
                 currentWorkflow={currentWorkflow}
+                currentConversation={currentConversation}
                 messages={messages}
                 isLoading={isLoading}
                 sidebarOpen={sidebarOpen}
@@ -231,8 +298,10 @@ function App() {
                 onToggleSidebar={toggleSidebar}
                 onViewChange={handleViewChange}
                 onSelectWorkflow={handleSelectWorkflow}
+                onSelectConversation={handleSelectConversation}
                 onNewWorkflow={handleNewWorkflow}
                 onDeleteWorkflow={handleDeleteWorkflow}
+                onDeleteConversation={handleDeleteConversation}
                 onUpdateWorkflow={handleUpdateWorkflow}
                 onSendMessage={generateWorkflow}
               />
