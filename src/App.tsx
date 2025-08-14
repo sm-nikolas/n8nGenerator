@@ -12,6 +12,7 @@ import { Layout } from './components/Layout';
 import { LoadingScreen } from './components/LoadingScreen';
 import { GoogleAuthCallback } from './components/GoogleAuthCallback';
 import { Message, Workflow } from './types'; // Removido Conversation
+import { supabase } from './lib/supabase';
 
 // Função para gerar workflow mock
 const generateMockWorkflow = (prompt: string): Workflow => {
@@ -141,6 +142,28 @@ function App() {
     }
   };
 
+  // Função para atualizar mensagens existentes com workflowId
+  const updateMessageWorkflowId = async (messageId: string, workflowId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          workflow_id: workflowId,
+          metadata: { workflowId }
+        })
+        .eq('id', messageId)
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error('Erro ao atualizar mensagem:', error);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar mensagem:', error);
+    }
+  };
+
   const generateWorkflow = async (prompt: string) => {
     if (!user) {
       setAuthModal(true);
@@ -189,6 +212,11 @@ function App() {
         // Gerar novo workflow baseado no prompt
         const workflow = generateMockWorkflow(prompt);
         workflowToUse = await saveWorkflow(workflow);
+        
+        // Atualizar a mensagem inicial do usuário com o workflowId correto
+        if (userMessage && !userMessage.workflowId) {
+          await updateMessageWorkflowId(userMessage.id, workflowToUse.id);
+        }
         
         if (currentWorkflow) {
           // Substituindo workflow existente
