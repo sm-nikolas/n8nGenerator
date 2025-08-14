@@ -131,7 +131,7 @@ export const ChatInterface = memo(function ChatInterface({
             {!currentWorkflow && (
             <div className="w-full max-w-2xl">
               <h3 className="text-sm font-semibold text-primary mb-4">
-                Try these examples
+                Try these examples to create your first workflow
               </h3>
               
               <div className="grid gap-3">
@@ -177,22 +177,28 @@ export const ChatInterface = memo(function ChatInterface({
                 
                 <div className="grid gap-3">
                   <button
-                    onClick={() => handleSuggestionClick("Add a new node to handle errors")}
+                    onClick={() => handleSuggestionClick("Add error handling to this workflow")}
                     className="text-left p-3 card hover:shadow-sm transition-shadow duration-200"
                   >
                     <p className="text-sm text-primary">Add error handling to this workflow</p>
                   </button>
                   <button
-                    onClick={() => handleSuggestionClick("Add email notifications when the workflow completes")}
+                    onClick={() => handleSuggestionClick("Add email notifications when this workflow completes")}
                     className="text-left p-3 card hover:shadow-sm transition-shadow duration-200"
                   >
                     <p className="text-sm text-primary">Add email notifications</p>
                   </button>
                   <button
-                    onClick={() => handleSuggestionClick("Optimize this workflow for better performance")}
+                    onClick={() => handleSuggestionClick("How can I optimize this workflow for better performance?")}
                     className="text-left p-3 card hover:shadow-sm transition-shadow duration-200"
                   >
                     <p className="text-sm text-primary">Optimize workflow performance</p>
+                  </button>
+                  <button
+                    onClick={() => handleSuggestionClick("Explain how this workflow works step by step")}
+                    className="text-left p-3 card hover:shadow-sm transition-shadow duration-200"
+                  >
+                    <p className="text-sm text-primary">Explain how this workflow works</p>
                   </button>
                 </div>
               </div>
