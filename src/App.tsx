@@ -54,7 +54,7 @@ function App() {
   const { user, loading: authLoading } = useAuth();
   const { workflows, saveWorkflow, deleteWorkflow } = useWorkflows(user?.id);
   const { conversations, createConversation, deleteConversation: removeConversation } = useConversations(user?.id);
-  const { messages, saveMessage, clearMessages, fetchMessagesForConversation, fetchMessagesForWorkflow } = useMessages(user?.id);
+  const { messages, saveMessage, clearMessages, fetchMessagesForConversation, fetchMessagesForWorkflow, addMessageToState } = useMessages(user?.id);
   
   const {
     currentWorkflow,
@@ -87,7 +87,6 @@ function App() {
       } else {
         // Workflow não encontrado, limpar URL e estado
         resetAppState();
-        clearMessages();
       }
     } else if (user && conversations && conversationId) {
       const conversation = conversations.find(c => c.id === conversationId);
@@ -97,13 +96,14 @@ function App() {
       } else {
         // Conversa não encontrada, limpar URL e estado
         resetAppState();
-        clearMessages();
       }
     } else {
       // Sem workflow na URL, garantir estado inicial limpo
       setCurrentWorkflow(null);
       setCurrentConversation(null);
-      clearMessages();
+      if (!conversationId && !workflowId) {
+        clearMessages();
+      }
     }
   }, [user, workflows, conversations, workflowId, conversationId, setCurrentWorkflow, setCurrentConversation, resetAppState, fetchMessagesForWorkflow, fetchMessagesForConversation, clearMessages]);
 
@@ -139,8 +139,10 @@ function App() {
           navigateToConversation(newConversation, 'chat');
         }
       }
+      return savedMessage;
     } catch (error) {
       console.error('Erro ao salvar mensagem:', error);
+      throw error;
     }
   };
 
@@ -165,7 +167,7 @@ function App() {
     }
 
     // Add user message to conversation
-    await addMessage({
+    const userMessage = await addMessage({
       type: 'user',
       content: prompt,
     }, activeConversationId);
@@ -180,7 +182,7 @@ function App() {
     try {
       const savedWorkflow = await saveWorkflow(workflow);
       
-      await addMessage({
+      const assistantMessage = await addMessage({
         type: 'assistant',
         content: `I've created a custom n8n workflow based on your request. The workflow includes ${workflow.nodes.length} nodes and is ready to use.`,
         workflow: savedWorkflow,

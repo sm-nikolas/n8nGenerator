@@ -38,6 +38,69 @@ export const ChatInterface = memo(function ChatInterface({
     setInput(suggestion);
   }, []);
 
+  // Função para renderizar uma mensagem individual
+  const renderMessage = useCallback((message: Message) => (
+    <div
+      key={message.id}
+      className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+    >
+      {message.type === 'assistant' && (
+        <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
+          <Bot className="h-4 w-4 text-white" />
+        </div>
+      )}
+      
+      <div
+        className={`max-w-[70%] p-4 rounded-lg ${
+          message.type === 'user'
+            ? 'bg-accent text-white'
+            : 'card'
+        }`}
+      >
+        <p className={`text-sm ${
+          message.type === 'user' ? 'text-white' : 'text-primary'
+        }`}>
+          {message.content}
+        </p>
+        
+        {message.workflow && (
+          <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
+                <Bot className="h-3 w-3 text-white" />
+              </div>
+              <div>
+                <h4 className="font-medium text-green-800 text-sm">
+                  Workflow Generated!
+                </h4>
+                <p className="text-green-600 text-xs">
+                  {message.workflow.name}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 text-xs">
+              <span className="text-green-700 bg-green-100 px-2 py-1 rounded">
+                {message.workflow.nodes.length} nodes
+              </span>
+              <span className="text-green-700 bg-green-100 px-2 py-1 rounded">
+                {message.workflow.edges.length} edges
+              </span>
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-2 text-xs opacity-70">
+          {message.timestamp.toLocaleTimeString()}
+        </div>
+      </div>
+      
+      {message.type === 'user' && (
+        <div className="w-8 h-8 bg-gray-600 rounded-lg flex items-center justify-center flex-shrink-0">
+          <User className="h-4 w-4 text-white" />
+        </div>
+      )}
+    </div>
+  ), []);
   const suggestions = [
     "Create a workflow to sync data between systems",
     "Automate email notifications based on events",
@@ -137,64 +200,7 @@ export const ChatInterface = memo(function ChatInterface({
           </div>
         ) : (
           <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {message.type === 'assistant' && (
-                  <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Bot className="h-4 w-4 text-white" />
-                  </div>
-                )}
-                
-                <div
-                  className={`max-w-[70%] p-4 rounded-lg ${
-                    message.type === 'user'
-                      ? 'bg-accent text-white'
-                      : 'card'
-                  }`}
-                >
-                  <p className={`text-sm ${
-                    message.type === 'user' ? 'text-white' : 'text-primary'
-                  }`}>
-                    {message.content}
-                  </p>
-                  
-                  {message.workflow && (
-                    <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
-                          <Bot className="h-3 w-3 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-green-800 text-sm">
-                            Workflow Generated!
-                          </h4>
-                          <p className="text-green-600 text-xs">
-                            {message.workflow.name}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3 text-xs">
-                        <span className="text-green-700 bg-green-100 px-2 py-1 rounded">
-                          {message.workflow.nodes.length} nodes
-                        </span>
-                        <span className="text-green-700 bg-green-100 px-2 py-1 rounded">
-                          {message.workflow.edges.length} edges
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {message.type === 'user' && (
-                  <div className="w-8 h-8 bg-gray-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <User className="h-4 w-4 text-white" />
-                  </div>
-                )}
-              </div>
-            ))}
+            {messages.map(renderMessage)}
             
             {isLoading && (
               <div className="flex gap-3 justify-start">

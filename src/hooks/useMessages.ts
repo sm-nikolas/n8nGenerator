@@ -91,6 +91,20 @@ export function useMessages(userId: string | undefined) {
     setMessages([]);
   }, []);
 
+  const addMessageToState = useCallback((message: Message) => {
+    setMessages(prev => {
+      // Verificar se a mensagem já existe para evitar duplicatas
+      const exists = prev.find(m => m.id === message.id);
+      if (exists) {
+        return prev;
+      }
+      
+      // Adicionar nova mensagem mantendo a ordem
+      const newMessages = [...prev, message];
+      return newMessages.sort((a, b) => a.messageOrder - b.messageOrder);
+    });
+  }, []);
+
   const fetchMessages = useCallback(async () => {
     if (!userId) {
       setMessages([]);
@@ -126,6 +140,10 @@ export function useMessages(userId: string | undefined) {
     if (!userId) throw new Error('User not authenticated');
 
     try {
+      // Calcular o próximo message_order baseado nas mensagens existentes
+      const maxOrder = messages.length > 0 ? Math.max(...messages.map(m => m.messageOrder)) : 0;
+      const nextOrder = maxOrder + 1;
+
       const messageData = {
         content: message.content,
         type: message.type,
@@ -133,6 +151,7 @@ export function useMessages(userId: string | undefined) {
         workflow_id: workflowId || null,
         user_id: userId,
         metadata: message.metadata || {},
+        message_order: nextOrder,
         created_at: new Date().toISOString(),
       };
 
@@ -156,8 +175,8 @@ export function useMessages(userId: string | undefined) {
           workflow: undefined, // Will be populated if needed
         };
 
-        // Update local state
-        setMessages(prev => [...prev, savedMessage]);
+        // Adicionar mensagem ao estado local
+        addMessageToState(savedMessage);
 
         return savedMessage;
       }
@@ -167,7 +186,7 @@ export function useMessages(userId: string | undefined) {
       console.error('Error saving message:', err);
       throw err;
     }
-  }, [userId]);
+  }, [userId, messages, addMessageToState]);
 
   const transformMessageFromDB = useCallback((row: MessageRow): Message => ({
     id: row.id,
@@ -192,6 +211,7 @@ export function useMessages(userId: string | undefined) {
     clearMessages,
     fetchMessagesForConversation,
     fetchMessagesForWorkflow,
+    addMessageToState,
     refetch: fetchMessages,
   };
 }
