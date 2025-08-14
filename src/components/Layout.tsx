@@ -4,16 +4,14 @@ import { Sidebar } from './Sidebar';
 import { ChatInterface } from './ChatInterface';
 import { WorkflowCanvas } from './WorkflowCanvas';
 import { PreviewPanel } from './PreviewPanel';
-import { Workflow, Conversation } from '../types';
+import { Workflow } from '../types'; // Removido Conversation
 
 import { ViewType } from '../hooks/useRouter';
 
 interface LayoutProps {
   user: any;
   workflows: Workflow[];
-  conversations: Conversation[];
   currentWorkflow: Workflow | null;
-  currentConversation: Conversation | null;
   messages: any[];
   isLoading: boolean;
   sidebarOpen: boolean;
@@ -21,10 +19,8 @@ interface LayoutProps {
   onToggleSidebar: () => void;
   onViewChange: (view: ViewType) => void;
   onSelectWorkflow: (workflow: Workflow) => void;
-  onSelectConversation: (conversation: Conversation) => void;
   onNewWorkflow: () => void;
   onDeleteWorkflow: (workflowId: string) => void;
-  onDeleteConversation: (conversationId: string) => void;
   onUpdateWorkflow: (workflow: Workflow) => void;
   onSendMessage: (message: string) => void;
 }
@@ -32,9 +28,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({
   user,
   workflows,
-  conversations,
   currentWorkflow,
-  currentConversation,
   messages,
   isLoading,
   sidebarOpen,
@@ -42,10 +36,8 @@ export const Layout: React.FC<LayoutProps> = ({
   onToggleSidebar,
   onViewChange,
   onSelectWorkflow,
-  onSelectConversation,
   onNewWorkflow,
   onDeleteWorkflow,
-  onDeleteConversation,
   onUpdateWorkflow,
   onSendMessage,
 }) => {
@@ -63,14 +55,10 @@ export const Layout: React.FC<LayoutProps> = ({
         {sidebarOpen && (
           <Sidebar 
             workflows={workflows}
-            conversations={conversations}
             currentWorkflow={currentWorkflow}
-            currentConversation={currentConversation}
             onSelectWorkflow={onSelectWorkflow}
-            onSelectConversation={onSelectConversation}
             onNewWorkflow={onNewWorkflow}
             onDeleteWorkflow={onDeleteWorkflow}
-            onDeleteConversation={onDeleteConversation}
           />
         )}
         
@@ -82,6 +70,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 isLoading={isLoading}
                 onSendMessage={onSendMessage}
                 currentWorkflow={currentWorkflow}
+                user={user}
               />
             </div>
           )}

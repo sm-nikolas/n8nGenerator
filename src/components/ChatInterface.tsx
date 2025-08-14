@@ -1,30 +1,86 @@
 import React, { useState, useCallback, useRef, useEffect, memo } from 'react';
 import { Message, Workflow } from '../types';
 import { Send, Loader2, Bot, User, GitBranch } from 'lucide-react';
+import { User as UserType } from '@supabase/supabase-js';
 
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
   onSendMessage: (message: string) => void;
   currentWorkflow?: Workflow | null;
+  user: UserType;
 }
 
 export const ChatInterface = memo(function ChatInterface({ 
   messages, 
   isLoading, 
   onSendMessage, 
-  currentWorkflow 
+  currentWorkflow,
+  user
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
+  const [textareaHeight, setTextareaHeight] = useState(48);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  // Função para obter a foto do usuário do Google OAuth
+  const getUserAvatar = useCallback(() => {
+    // Check user_metadata first (Google OAuth data)
+    if (user.user_metadata?.avatar_url) {
+      return user.user_metadata.avatar_url;
+    }
+    // Fallback to app_metadata
+    if (user.app_metadata?.provider === 'google' && user.app_metadata?.avatar_url) {
+      return user.app_metadata.avatar_url;
+    }
+    // Fallback to picture field (common in OAuth)
+    if (user.user_metadata?.picture) {
+      return user.user_metadata.picture;
+    }
+    return null;
+  }, [user]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Focar no input quando isLoading mudar de true para false (resposta do robô retornou)
+  useEffect(() => {
+    if (!isLoading && inputRef.current) {
+      // Pequeno delay para garantir que a mensagem foi renderizada
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 200);
+    }
+  }, [isLoading]);
+
+  const adjustTextareaHeight = useCallback(() => {
+    if (inputRef.current) {
+      const textarea = inputRef.current;
+      textarea.style.height = 'auto';
+      const newHeight = Math.min(Math.max(48, textarea.scrollHeight), 120);
+      setTextareaHeight(newHeight);
+      textarea.style.height = `${newHeight}px`;
+      
+      // Ajustar posição do botão para centralização perfeita
+      const button = textarea.parentElement?.querySelector('button');
+      if (button) {
+        const buttonHeight = 32; // h-8 = 32px
+        const topPosition = (newHeight - buttonHeight) / 2;
+        (button as HTMLElement).style.top = `${topPosition}px`;
+        (button as HTMLElement).style.transform = 'none';
+      }
+    }
+  }, []);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    adjustTextareaHeight();
+  }, [adjustTextareaHeight]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +88,18 @@ export const ChatInterface = memo(function ChatInterface({
     
     onSendMessage(input.trim());
     setInput('');
+    setTextareaHeight(48);
+    if (inputRef.current) {
+      inputRef.current.style.height = '48px';
+      
+      // Reposicionar o botão para a nova altura
+      const button = inputRef.current.parentElement?.querySelector('button');
+      if (button) {
+        const buttonHeight = 32; // h-8 = 32px
+        const topPosition = (48 - buttonHeight) / 2; // 48px é a altura padrão
+        (button as HTMLElement).style.top = `${topPosition}px`;
+      }
+    }
   }, [input, isLoading, onSendMessage]);
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -39,68 +107,100 @@ export const ChatInterface = memo(function ChatInterface({
   }, []);
 
   // Função para renderizar uma mensagem individual
-  const renderMessage = useCallback((message: Message) => (
-    <div
-      key={message.id}
-      className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-    >
-      {message.type === 'assistant' && (
-        <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
-          <Bot className="h-4 w-4 text-white" />
-        </div>
-      )}
-      
+  const renderMessage = useCallback((message: Message) => {
+    const userAvatar = getUserAvatar();
+    
+    return (
       <div
-        className={`max-w-[70%] p-4 rounded-lg ${
-          message.type === 'user'
-            ? 'bg-accent text-white'
-            : 'card'
-        }`}
+        key={message.id}
+        className={`flex gap-2 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
       >
-        <p className={`text-sm ${
-          message.type === 'user' ? 'text-white' : 'text-primary'
-        }`}>
-          {message.content}
-        </p>
-        
-        {message.workflow && (
-          <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
-                <Bot className="h-3 w-3 text-white" />
-              </div>
-              <div>
-                <h4 className="font-medium text-green-800 text-sm">
-                  Workflow Generated!
-                </h4>
-                <p className="text-green-600 text-xs">
-                  {message.workflow.name}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3 text-xs">
-              <span className="text-green-700 bg-green-100 px-2 py-1 rounded">
-                {message.workflow.nodes.length} nodes
-              </span>
-              <span className="text-green-700 bg-green-100 px-2 py-1 rounded">
-                {message.workflow.edges.length} edges
-              </span>
-            </div>
+        {message.type === 'assistant' && (
+          <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center flex-shrink-0">
+            <Bot className="h-4 w-4 text-white" />
           </div>
         )}
         
-        <div className="mt-2 text-xs opacity-70">
-          {message.timestamp.toLocaleTimeString()}
+        <div
+          className={`max-w-[70%] px-4 py-2.5 ${
+            message.type === 'user'
+              ? 'bg-accent text-white rounded-[18px] rounded-tr-[6px]'
+              : 'card text-primary rounded-[18px] rounded-tl-[6px]'
+          }`}
+        >
+                           <div className={`text-sm leading-relaxed ${
+                   message.type === 'user' ? 'text-white' : 'text-primary'
+                 }`}>
+                   {message.content.split('\n').map((line, index) => (
+                     <React.Fragment key={index}>
+                       {line}
+                       {index < message.content.split('\n').length - 1 && <br />}
+                     </React.Fragment>
+                   ))}
+                 </div>
+          
+          {message.workflow && (
+            <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 bg-green-500 rounded flex items-center justify-center">
+                  <Bot className="h-2.5 w-2.5 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-green-800 text-xs">
+                    Workflow Generated!
+                  </h4>
+                  <p className="text-green-600 text-xs">
+                    {message.workflow.name}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className="text-green-700 bg-green-100 px-2 py-0.5 rounded">
+                  {message.workflow.nodes.length} nodes
+                </span>
+                <span className="text-green-700 bg-green-100 px-2 py-0.5 rounded">
+                  {message.workflow.edges.length} edges
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <div className="mt-2 text-xs opacity-50 flex items-center justify-end">
+            <span>
+              {new Date(message.timestamp).toLocaleTimeString('pt-BR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
+            </span>
+          </div>
         </div>
+        
+        {message.type === 'user' && (
+          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {userAvatar ? (
+              <img 
+                src={userAvatar} 
+                alt="Profile" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to icon if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  const fallback = e.currentTarget.nextElementSibling;
+                  if (fallback) {
+                    (fallback as HTMLElement).style.display = 'flex';
+                  }
+                }}
+              />
+            ) : null}
+            <div className="w-full h-full bg-gray-600 rounded-full flex items-center justify-center hidden">
+              <User className="h-4 w-4 text-white" />
+            </div>
+          </div>
+        )}
       </div>
-      
-      {message.type === 'user' && (
-        <div className="w-8 h-8 bg-gray-600 rounded-lg flex items-center justify-center flex-shrink-0">
-          <User className="h-4 w-4 text-white" />
-        </div>
-      )}
-    </div>
-  ), []);
+    );
+  }, [getUserAvatar]);
+
   const suggestions = [
     "Create a workflow to sync data between systems",
     "Automate email notifications based on events",
@@ -205,22 +305,22 @@ export const ChatInterface = memo(function ChatInterface({
             )}
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
+          <div className="max-w-3xl mx-auto py-4 px-4 space-y-4">
             {messages.map(renderMessage)}
             
-            {isLoading && (
-              <div className="flex gap-3 justify-start">
-                <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-4 w-4 text-white" />
-                </div>
-                <div className="card p-4">
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-accent" />
-                    <span className="text-sm text-secondary">Creating your workflow...</span>
-                  </div>
-                </div>
-              </div>
-            )}
+                                      {isLoading && (
+               <div className="flex gap-2 justify-start">
+                 <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center flex-shrink-0">
+                   <Bot className="h-4 w-4 text-white" />
+                 </div>
+                 <div className="card px-4 py-2.5 rounded-[18px] rounded-bl-[6px]">
+                   <div className="flex items-center gap-2">
+                     <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                     <span className="text-sm text-primary">Creating your workflow...</span>
+                   </div>
+                 </div>
+               </div>
+             )}
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -229,24 +329,38 @@ export const ChatInterface = memo(function ChatInterface({
       <div className="p-4 border-t border-gray-200">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
           <div className="relative">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={currentWorkflow 
-                ? "Ask for modifications or improvements to this workflow..."
-                : "Describe the workflow you want to create..."
-              }
-              className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-white text-primary placeholder-secondary"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-accent hover:bg-[#E63E6B] disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200 disabled:cursor-not-allowed flex items-center justify-center"
-            >
-              <Send className="h-4 w-4" />
-            </button>
+                         <textarea
+               value={input}
+               onChange={handleInputChange}
+               onKeyDown={(e) => {
+                 if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+                   e.preventDefault();
+                   handleSubmit(e as any);
+                 }
+               }}
+               placeholder={currentWorkflow 
+                 ? "Ask for modifications or improvements to this workflow..."
+                 : "Describe the workflow you want to create..."
+               }
+               className="w-full px-4 py-3 pr-20 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-white text-primary placeholder-secondary resize-none"
+               style={{ 
+                 height: `${textareaHeight}px`,
+                 overflowY: textareaHeight >= 120 ? 'auto' : 'hidden'
+               }}
+               disabled={isLoading}
+               ref={inputRef}
+               rows={1}
+             />
+                               <button
+                     type="submit"
+                     disabled={!input.trim() || isLoading}
+                     className="absolute right-4 w-8 h-8 bg-accent hover:bg-[#E63E6B] disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200 disabled:cursor-not-allowed flex items-center justify-center"
+                     style={{
+                       top: '8px'
+                     }}
+                   >
+                     <Send className="h-4 w-4" />
+                   </button>
           </div>
         </form>
       </div>

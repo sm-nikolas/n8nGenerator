@@ -1,217 +1,133 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { Message, Workflow } from '../types'; // Removido Conversation
 import { supabase } from '../lib/supabase';
-import { Database } from '../lib/database.types';
-import { Message, Conversation } from '../types';
-
-type MessageRow = Database['public']['Tables']['messages']['Row'];
 
 export function useMessages(userId: string | undefined) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchMessagesForConversation = useCallback(async (conversationId: string | null) => {
-    if (!conversationId) {
-      setMessages([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('message_order', { ascending: true });
-
-      if (error) throw error;
-
-      if (data) {
-        const transformedMessages: Message[] = data.map((row: MessageRow) => ({
-          id: row.id,
-          content: row.content,
-          type: row.type,
-          timestamp: new Date(row.created_at),
-          conversationId: row.conversation_id,
-          messageOrder: row.message_order || 0,
-          metadata: row.metadata || {},
-          workflow: undefined, // Will be populated if needed
-        }));
-
-        setMessages(transformedMessages);
-      }
-    } catch (err) {
-      console.error('Error fetching messages:', err);
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const fetchMessagesForWorkflow = useCallback(async (workflowId: string | null) => {
-    if (!workflowId) {
+    if (!workflowId || !userId) {
       setMessages([]);
-      setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('workflow_id', workflowId)
+        .eq('user_id', userId)
         .order('message_order', { ascending: true });
 
-      if (error) throw error;
-
-      if (data) {
-        const transformedMessages: Message[] = data.map((row: MessageRow) => ({
-          id: row.id,
-          content: row.content,
-          type: row.type,
-          timestamp: new Date(row.created_at),
-          conversationId: row.conversation_id,
-          messageOrder: row.message_order || 0,
-          metadata: row.metadata || {},
-          workflow: undefined,
-        }));
-
-        setMessages(transformedMessages);
+      if (error) {
+        console.error('Erro ao buscar mensagens:', error);
+        return;
       }
-    } catch (err) {
-      console.error('Error fetching messages:', err);
-      setMessages([]);
-    } finally {
-      setLoading(false);
+
+      const formattedMessages: Message[] = data.map(row => ({
+        id: row.id,
+        type: row.type,
+        content: row.content,
+        timestamp: row.created_at,
+        workflowId: row.workflow_id,
+        messageOrder: row.message_order || 0,
+        metadata: row.metadata || {},
+        workflow: row.workflow
+      }));
+
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Erro ao buscar mensagens:', error);
     }
-  }, []);
+  }, [userId]);
+
+  const saveMessage = useCallback(async (
+    message: Omit<Message, 'id' | 'timestamp' | 'messageOrder' | 'metadata'>,
+    workflowId?: string
+  ): Promise<Message> => {
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    try {
+      // Determinar a ordem da mensagem no workflow
+      let messageOrder = 0;
+      if (workflowId) {
+        const workflowMessages = messages.filter(m => m.workflowId === workflowId);
+        messageOrder = workflowMessages.length;
+      }
+
+      // Preparar metadados da mensagem
+      const metadata: Record<string, any> = {};
+      if (workflowId) {
+        metadata.workflowId = workflowId;
+      }
+
+      const messageToSave = {
+        ...message,
+        messageOrder,
+        metadata
+      };
+
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          type: messageToSave.type,
+          content: messageToSave.content,
+          user_id: userId,
+          workflow_id: workflowId || null,
+          message_order: messageToSave.messageOrder,
+          metadata: messageToSave.metadata
+        })
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Erro ao salvar mensagem:', error);
+        throw error;
+      }
+
+      const savedMessage: Message = {
+        id: data.id,
+        type: data.type,
+        content: data.content,
+        timestamp: data.created_at,
+        workflowId: data.workflow_id,
+        messageOrder: data.message_order || 0,
+        metadata: data.metadata || {},
+        workflow: data.workflow
+      };
+
+      // Adicionar à lista local
+      setMessages(prev => [...prev, savedMessage]);
+
+      return savedMessage;
+    } catch (error) {
+      console.error('Erro ao salvar mensagem:', error);
+      throw error;
+    }
+  }, [userId, messages]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
 
   const addMessageToState = useCallback((message: Message) => {
-    setMessages(prev => {
-      // Verificar se a mensagem já existe para evitar duplicatas
-      const exists = prev.find(m => m.id === message.id);
-      if (exists) {
-        return prev;
-      }
-      
-      // Adicionar nova mensagem mantendo a ordem
-      const newMessages = [...prev, message];
-      return newMessages.sort((a, b) => a.messageOrder - b.messageOrder);
-    });
+    setMessages(prev => [...prev, message]);
   }, []);
 
-  const fetchMessages = useCallback(async () => {
-    if (!userId) {
+  // Carregar mensagens quando o userId mudar
+  useEffect(() => {
+    if (userId) {
       setMessages([]);
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('user_id', userId)
-        .is('conversation_id', null)
-        .order('message_order', { ascending: true });
-
-      if (error) throw error;
-
-      const transformedMessages: Message[] = data.map(transformMessageFromDB);
-      setMessages(transformedMessages);
-    } catch (err) {
-      console.error('Erro ao carregar mensagens:', err);
-    } finally {
-      setLoading(false);
     }
   }, [userId]);
 
-  const saveMessage = useCallback(async (
-    message: Omit<Message, 'id' | 'timestamp' | 'messageOrder'>, 
-    conversationId?: string,
-    workflowId?: string
-  ) => {
-    if (!userId) throw new Error('User not authenticated');
-
-    try {
-      // Calcular o próximo message_order baseado nas mensagens existentes
-      const maxOrder = messages.length > 0 ? Math.max(...messages.map(m => m.messageOrder)) : 0;
-      const nextOrder = maxOrder + 1;
-
-      const messageData = {
-        content: message.content,
-        type: message.type,
-        conversation_id: conversationId || null,
-        workflow_id: workflowId || null,
-        user_id: userId,
-        metadata: message.metadata || {},
-        message_order: nextOrder,
-        created_at: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase
-        .from('messages')
-        .insert(messageData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        const savedMessage: Message = {
-          id: data.id,
-          content: data.content,
-          type: data.type,
-          timestamp: new Date(data.created_at),
-          conversationId: data.conversation_id,
-          messageOrder: data.message_order || 0,
-          metadata: data.metadata || {},
-          workflow: undefined, // Will be populated if needed
-        };
-
-        // Adicionar mensagem ao estado local
-        addMessageToState(savedMessage);
-
-        return savedMessage;
-      }
-
-      throw new Error('Failed to save message');
-    } catch (err) {
-      console.error('Error saving message:', err);
-      throw err;
-    }
-  }, [userId, messages, addMessageToState]);
-
-  const transformMessageFromDB = useCallback((row: MessageRow): Message => ({
-    id: row.id,
-    type: row.type,
-    content: row.content,
-    timestamp: new Date(row.created_at),
-    conversationId: row.conversation_id,
-    messageOrder: row.message_order || 0,
-    metadata: row.metadata || {},
-    workflow: undefined, // Será preenchido quando necessário
-  }), []);
-
-  // Carregar mensagens iniciais quando o usuário mudar
-  useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
-
   return {
     messages,
-    loading,
     saveMessage,
     clearMessages,
-    fetchMessagesForConversation,
     fetchMessagesForWorkflow,
     addMessageToState,
-    refetch: fetchMessages,
   };
 }

@@ -1,15 +1,3 @@
-export interface Conversation {
-  id: string;
-  title: string;
-  userId: string;
-  workflowId?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  lastMessageAt: string;
-  messageCount?: number;
-  lastMessage?: string;
-}
-
 export interface Workflow {
   id: string;
   name: string;
@@ -33,16 +21,15 @@ export interface WorkflowEdge {
   id: string;
   source: string;
   target: string;
-  label?: string;
 }
 
 export interface Message {
   id: string;
   type: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
-  conversationId?: string | null;
+  timestamp: string; // ISO string timestamp
   messageOrder: number;
   metadata?: Record<string, any>;
   workflow?: Workflow;
+  workflowId?: string | null; // Campo direto da tabela
 }

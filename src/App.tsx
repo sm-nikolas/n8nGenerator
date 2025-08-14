@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './hooks/useAuth';
 import { useWorkflows } from './hooks/useWorkflows';
 import { useMessages } from './hooks/useMessages';
-import { useConversations } from './hooks/useConversations';
 import { useAppState } from './hooks/useAppState';
 import { ViewType } from './hooks/useRouter';
 import { AuthModal } from './components/AuthModal';
@@ -12,7 +11,7 @@ import { LandingPage } from './components/LandingPage';
 import { Layout } from './components/Layout';
 import { LoadingScreen } from './components/LoadingScreen';
 import { GoogleAuthCallback } from './components/GoogleAuthCallback';
-import { Message, Workflow, Conversation } from './types';
+import { Message, Workflow } from './types'; // Removido Conversation
 
 // Função para gerar workflow mock
 const generateMockWorkflow = (prompt: string): Workflow => {
@@ -53,26 +52,21 @@ const generateMockWorkflow = (prompt: string): Workflow => {
 function App() {
   const { user, loading: authLoading } = useAuth();
   const { workflows, saveWorkflow, deleteWorkflow } = useWorkflows(user?.id);
-  const { conversations, createConversation, deleteConversation: removeConversation } = useConversations(user?.id);
-  const { messages, saveMessage, clearMessages, fetchMessagesForConversation, fetchMessagesForWorkflow, addMessageToState } = useMessages(user?.id);
+  const { messages, saveMessage, clearMessages, fetchMessagesForWorkflow, addMessageToState } = useMessages(user?.id);
   
   const {
     currentWorkflow,
-    currentConversation,
     isLoading,
     sidebarOpen,
     showAuthModal,
     view,
     workflowId,
-    conversationId,
     toggleSidebar,
     setAuthModal,
     setCurrentWorkflow,
-    setCurrentConversation,
     setLoading,
     resetAppState,
     navigateToWorkflow,
-    navigateToConversation,
     navigateToNewChat,
     navigateToView,
   } = useAppState();
@@ -88,37 +82,24 @@ function App() {
         // Workflow não encontrado, limpar URL e estado
         resetAppState();
       }
-    } else if (user && conversations && conversationId) {
-      const conversation = conversations.find(c => c.id === conversationId);
-      if (conversation) {
-        setCurrentConversation(conversation);
-        fetchMessagesForConversation(conversationId);
-      } else {
-        // Conversa não encontrada, limpar URL e estado
-        resetAppState();
-      }
     } else {
       // Sem workflow na URL, garantir estado inicial limpo
       setCurrentWorkflow(null);
-      setCurrentConversation(null);
-      if (!conversationId && !workflowId) {
+      if (!workflowId) {
         clearMessages();
       }
     }
-  }, [user, workflows, conversations, workflowId, conversationId, setCurrentWorkflow, setCurrentConversation, resetAppState, fetchMessagesForWorkflow, fetchMessagesForConversation, clearMessages]);
+  }, [user, workflows, workflowId, setCurrentWorkflow, resetAppState, fetchMessagesForWorkflow, clearMessages]);
 
   // Carregar mensagens quando o workflow mudar
   useEffect(() => {
     if (user && currentWorkflow) {
       fetchMessagesForWorkflow(currentWorkflow.id);
-    } else if (user && currentConversation) {
-      fetchMessagesForConversation(currentConversation.id);
     }
-  }, [currentWorkflow?.id, currentConversation?.id, user, fetchMessagesForWorkflow, fetchMessagesForConversation]);
+  }, [currentWorkflow?.id, user, fetchMessagesForWorkflow]);
 
   const addMessage = async (
-    message: Omit<Message, 'id' | 'timestamp' | 'messageOrder'>, 
-    conversationId?: string,
+    message: Omit<Message, 'id' | 'timestamp' | 'messageOrder' | 'metadata'>, 
     workflowId?: string
   ) => {
     if (!user) {
@@ -127,18 +108,32 @@ function App() {
     }
     
     try {
-      const savedMessage = await saveMessage(message, conversationId, workflowId);
+      // Determinar a ordem da mensagem no workflow
+      let messageOrder = 0;
+      if (workflowId) {
+        const workflowMessages = messages.filter(m => m.workflowId === workflowId);
+        messageOrder = workflowMessages.length;
+      }
+      
+      // Preparar metadados da mensagem
+      const metadata: Record<string, any> = {};
+      if (workflowId) {
+        metadata.workflowId = workflowId;
+      }
+      
+      const messageToSave = {
+        ...message,
+        messageOrder,
+        metadata
+      };
+      
+      const savedMessage = await saveMessage(messageToSave, workflowId);
+      
       if (savedMessage.workflow) {
         setCurrentWorkflow(savedMessage.workflow);
         navigateToWorkflow(savedMessage.workflow, 'chat');
-      } else if (savedMessage.conversationId && !conversationId) {
-        // Nova conversa foi criada automaticamente
-        const newConversation = conversations.find(c => c.id === savedMessage.conversationId);
-        if (newConversation) {
-          setCurrentConversation(newConversation);
-          navigateToConversation(newConversation, 'chat');
-        }
       }
+      
       return savedMessage;
     } catch (error) {
       console.error('Erro ao salvar mensagem:', error);
@@ -154,41 +149,54 @@ function App() {
     
     setLoading(true);
     
-    // Determinar se deve criar novo workflow ou continuar conversa existente
-    let activeConversationId = currentConversation?.id;
-    let shouldGenerateNewWorkflow = !currentWorkflow && !currentConversation;
+    let shouldGenerateNewWorkflow = false;
     
-    // Se não há conversa atual, criar uma nova
-    if (!activeConversationId) {
-      const title = prompt.length > 50 ? prompt.substring(0, 47) + '...' : prompt;
-      const newConversation = await createConversation(title);
-      if (newConversation) {
-        setCurrentConversation(newConversation);
-        activeConversationId = newConversation.id;
-        navigateToConversation(newConversation, 'chat');
-        shouldGenerateNewWorkflow = true; // Nova conversa = novo workflow
+    // Se não há workflow atual, criar um novo
+    if (!currentWorkflow) {
+      shouldGenerateNewWorkflow = true;
+    } else {
+      // Verificar se o usuário quer criar um novo workflow
+      const lowerPrompt = prompt.toLowerCase();
+      const isForceNewRequest = lowerPrompt.includes('create new') || 
+                               lowerPrompt.includes('criar novo') || 
+                               lowerPrompt.includes('make another') || 
+                               lowerPrompt.includes('fazer outro') ||
+                               lowerPrompt.includes('start over') ||
+                               lowerPrompt.includes('começar de novo');
+      
+      if (isForceNewRequest) {
+        shouldGenerateNewWorkflow = true;
+      } else {
+        // Manter contexto do workflow atual
+        shouldGenerateNewWorkflow = false;
       }
     }
 
-    // Adicionar mensagem do usuário à conversa
+    // Adicionar mensagem do usuário
     const userMessage = await addMessage({
       type: 'user',
       content: prompt,
-    }, activeConversationId, currentWorkflow?.id);
+    }, currentWorkflow?.id);
 
     try {
       let responseContent = '';
       let workflowToUse = currentWorkflow;
       
       if (shouldGenerateNewWorkflow) {
-        // Simular geração de workflow apenas para nova conversa
+        // Simular geração de workflow
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Gerar novo workflow baseado no prompt
         const workflow = generateMockWorkflow(prompt);
         workflowToUse = await saveWorkflow(workflow);
         
-        responseContent = `I've created a custom n8n workflow based on your request: "${prompt}". The workflow includes ${workflowToUse.nodes.length} nodes and is ready to use. You can now ask me to modify it, add more functionality, or explain how it works.`;
+        if (currentWorkflow) {
+          // Substituindo workflow existente
+          responseContent = `I've created a new n8n workflow based on your request: "${prompt}". This replaces the previous workflow "${currentWorkflow.name}". The new workflow includes ${workflowToUse.nodes.length} nodes and is ready to use. You can now ask me to modify it, add more functionality, or explain how it works.`;
+        } else {
+          // Primeiro workflow
+          responseContent = `I've created a custom n8n workflow based on your request: "${prompt}". The workflow includes ${workflowToUse.nodes.length} nodes and is ready to use. You can now ask me to modify it, add more functionality, or explain how it works.`;
+        }
         
         setCurrentWorkflow(workflowToUse);
         navigateToWorkflow(workflowToUse, 'chat');
@@ -200,23 +208,25 @@ function App() {
           // Simular resposta contextual sobre o workflow existente
           responseContent = generateContextualResponse(prompt, currentWorkflow);
         } else {
-          responseContent = `I understand you want to discuss: "${prompt}". Could you provide more details about what kind of workflow you'd like me to create?`;
+          responseContent = `I understand you want to discuss: "${prompt}". Since we don't have an active workflow, you can ask me to create a new one by saying "create a workflow for..." or "make a workflow that...".`;
         }
       }
       
       // Adicionar resposta do assistente
-      await addMessage({
-        type: 'assistant',
+      const assistantMessage = {
+        type: 'assistant' as const,
         content: responseContent,
         ...(shouldGenerateNewWorkflow && workflowToUse ? { workflow: workflowToUse } : {})
-      }, activeConversationId, workflowToUse?.id);
+      };
+      
+      await addMessage(assistantMessage, workflowToUse?.id);
       
     } catch (error) {
       console.error('Erro ao salvar workflow:', error);
       await addMessage({
         type: 'assistant',
         content: 'Sorry, there was an error processing your request. Please try again.',
-      }, activeConversationId);
+      });
     }
     
     setLoading(false);
@@ -244,6 +254,18 @@ function App() {
     
     if (lowerPrompt.includes('optimize') || lowerPrompt.includes('improve') || lowerPrompt.includes('otimizar') || lowerPrompt.includes('melhorar')) {
       return `I can suggest optimizations for "${workflow.name}". Some ways to improve performance include: reducing unnecessary nodes, optimizing data transformations, and adding error handling. Which aspect would you like to focus on?`;
+    }
+    
+    if (lowerPrompt.includes('delete') || lowerPrompt.includes('remove') || lowerPrompt.includes('deletar') || lowerPrompt.includes('remover')) {
+      return `I can help you remove elements from "${workflow.name}". The workflow currently has ${workflow.nodes.length} nodes and ${workflow.edges.length} connections. What would you like me to remove?`;
+    }
+    
+    if (lowerPrompt.includes('test') || lowerPrompt.includes('execute') || lowerPrompt.includes('testar') || lowerPrompt.includes('executar')) {
+      return `I can help you test "${workflow.name}". The workflow is ready for execution with ${workflow.nodes.length} nodes. Would you like me to show you how to test it or make any adjustments before running?`;
+    }
+    
+    if (lowerPrompt.includes('export') || lowerPrompt.includes('save') || lowerPrompt.includes('exportar') || lowerPrompt.includes('salvar')) {
+      return `"${workflow.name}" can be exported as a JSON file. The workflow contains ${workflow.nodes.length} nodes and is fully configured. Would you like me to help you export it or make any final adjustments?`;
     }
     
     // Resposta genérica contextual
@@ -276,38 +298,15 @@ function App() {
     }
   };
 
-  const handleDeleteConversation = async (conversationId: string) => {
-    if (!user) return;
-    
-    try {
-      await removeConversation(conversationId);
-      if (currentConversation?.id === conversationId) {
-        setCurrentConversation(null);
-        resetAppState();
-        clearMessages();
-      }
-    } catch (error) {
-      console.error('Erro ao deletar conversa:', error);
-    }
-  };
-
   const handleNewWorkflow = () => {
     setCurrentWorkflow(null);
-    setCurrentConversation(null);
     navigateToNewChat();
     clearMessages();
   };
 
   const handleSelectWorkflow = async (workflow: Workflow) => {
     setCurrentWorkflow(workflow);
-    setCurrentConversation(null);
     navigateToWorkflow(workflow, 'chat');
-  };
-
-  const handleSelectConversation = async (conversation: Conversation) => {
-    setCurrentConversation(conversation);
-    setCurrentWorkflow(null);
-    navigateToConversation(conversation, 'chat');
   };
 
   const handleViewChange = (newView: ViewType) => {
@@ -339,9 +338,7 @@ function App() {
               <Layout
                 user={user}
                 workflows={workflows}
-                conversations={conversations}
                 currentWorkflow={currentWorkflow}
-                currentConversation={currentConversation}
                 messages={messages}
                 isLoading={isLoading}
                 sidebarOpen={sidebarOpen}
@@ -349,10 +346,8 @@ function App() {
                 onToggleSidebar={toggleSidebar}
                 onViewChange={handleViewChange}
                 onSelectWorkflow={handleSelectWorkflow}
-                onSelectConversation={handleSelectConversation}
                 onNewWorkflow={handleNewWorkflow}
                 onDeleteWorkflow={handleDeleteWorkflow}
-                onDeleteConversation={handleDeleteConversation}
                 onUpdateWorkflow={handleUpdateWorkflow}
                 onSendMessage={generateWorkflow}
               />

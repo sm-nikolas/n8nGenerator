@@ -1,29 +1,21 @@
 import React, { memo } from 'react';
-import { Workflow, Conversation } from '../types';
-import { Plus, Clock, GitBranch, Trash2, Zap, Database, Mail, MessageSquare, Calendar } from 'lucide-react';
+import { Workflow } from '../types'; // Removido Conversation
+import { Plus, Clock, GitBranch, Trash2, Zap, Database, Mail } from 'lucide-react';
 
 interface SidebarProps {
   workflows: Workflow[];
-  conversations: Conversation[];
   currentWorkflow: Workflow | null;
-  currentConversation: Conversation | null;
   onSelectWorkflow: (workflow: Workflow) => void;
-  onSelectConversation: (conversation: Conversation) => void;
   onNewWorkflow: () => void;
   onDeleteWorkflow: (workflowId: string) => void;
-  onDeleteConversation: (conversationId: string) => void;
 }
 
 export const Sidebar = memo(function Sidebar({ 
   workflows, 
-  conversations,
   currentWorkflow, 
-  currentConversation,
   onSelectWorkflow, 
-  onSelectConversation,
   onNewWorkflow, 
-  onDeleteWorkflow,
-  onDeleteConversation
+  onDeleteWorkflow
 }: SidebarProps) {
   const formatDate = React.useCallback((date: Date) => {
     const now = new Date();
@@ -46,19 +38,10 @@ export const Sidebar = memo(function Sidebar({
     }
   }, [onDeleteWorkflow]);
 
-  const handleDeleteConversationClick = React.useCallback((e: React.MouseEvent, conversationId: string) => {
-    e.stopPropagation();
-    if (confirm('Are you sure you want to delete this conversation?')) {
-      onDeleteConversation(conversationId);
-    }
-  }, [onDeleteConversation]);
   const handleWorkflowSelect = React.useCallback((workflow: Workflow) => {
     onSelectWorkflow(workflow);
   }, [onSelectWorkflow]);
 
-  const handleConversationSelect = React.useCallback((conversation: Conversation) => {
-    onSelectConversation(conversation);
-  }, [onSelectConversation]);
   const templates = [
     {
       name: 'API Integration',
@@ -94,68 +77,6 @@ export const Sidebar = memo(function Sidebar({
       
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <div className="p-4 space-y-6">
-          <div>
-            <h3 className="text-sm font-semibold text-primary mb-3">Recent Conversations</h3>
-            
-            {conversations.length === 0 ? (
-              <div className="text-center py-4">
-                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mx-auto mb-2">
-                  <MessageSquare className="h-5 w-5 text-white" />
-                </div>
-                <p className="text-xs text-secondary">No conversations yet</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {conversations.slice(0, 5).map((conversation) => (
-                  <div
-                    key={conversation.id}
-                    onClick={() => handleConversationSelect(conversation)}
-                    className={`group cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md ${
-                      currentConversation?.id === conversation.id
-                        ? 'card border-blue-500 shadow-lg bg-blue-50 ring-1 ring-blue-500/20'
-                        : 'card hover:shadow-md hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="p-3">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-primary truncate text-sm">
-                            {conversation.title}
-                          </h4>
-                          {conversation.lastMessage && (
-                            <p className="text-xs text-secondary line-clamp-2 mt-1">
-                              {conversation.lastMessage}
-                            </p>
-                          )}
-                        </div>
-                        <button
-                          onClick={(e) => handleDeleteConversationClick(e, conversation.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-secondary hover:text-red-500 hover:bg-red-50 rounded transition-all duration-200"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-xs text-secondary">
-                          <Calendar className="h-3 w-3" />
-                          <span className="text-xs text-gray-500">
-                            {formatDate(new Date(conversation.lastMessageAt))}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                            {conversation.messageCount || 0} messages
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          
           <div>
             <h3 className="text-sm font-semibold text-primary mb-3">Recent Workflows</h3>
             
