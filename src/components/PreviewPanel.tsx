@@ -150,7 +150,7 @@ export const PreviewPanel = memo(function PreviewPanel({ workflow }: PreviewPane
                       {workflow.nodes.length} nodes
                     </span>
                     <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                      {workflow.edges.length} edges
+                      {Object.keys(workflow.connections).length} connections
                     </span>
                     <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
                       {formatDate(workflow.createdAt)}
@@ -183,8 +183,8 @@ export const PreviewPanel = memo(function PreviewPanel({ workflow }: PreviewPane
                       <span className="text-secondary ml-2">x: {node.position.x}, y: {node.position.y}</span>
                     </div>
                     <div className="text-sm">
-                      <span className="font-medium text-primary">Data:</span>
-                      <span className="text-secondary ml-2">{JSON.stringify(node.data)}</span>
+                      <span className="font-medium text-primary">Parameters:</span>
+                      <span className="text-secondary ml-2">{JSON.stringify(node.parameters)}</span>
                     </div>
                   </div>
                 </div>

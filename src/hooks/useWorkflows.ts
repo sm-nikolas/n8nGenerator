@@ -30,7 +30,7 @@ export function useWorkflows(userId: string | undefined) {
           name: row.name,
           description: row.description || '',
           nodes: row.nodes || [],
-          edges: row.connections || [], // Map connections to edges
+          connections: row.connections || {}, // Keep connections as object
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           userId: row.user_id,
@@ -55,7 +55,7 @@ export function useWorkflows(userId: string | undefined) {
         name: workflow.name,
         description: workflow.description,
         nodes: workflow.nodes,
-        connections: workflow.edges, // Map edges to connections
+        connections: workflow.connections, // Keep connections as object
         user_id: userId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -75,7 +75,7 @@ export function useWorkflows(userId: string | undefined) {
           name: data.name,
           description: data.description || '',
           nodes: data.nodes || [],
-          edges: data.connections || [], // Map connections to edges
+          connections: data.connections || {}, // Keep connections as object
           createdAt: data.created_at,
           updatedAt: data.updated_at,
           userId: data.user_id,

@@ -20,33 +20,237 @@ import { supabase } from './lib/supabase';
 // Função para gerar workflow mock
 const generateMockWorkflow = (prompt: string): Workflow => {
   const workflowId = uuidv4();
+  
+  // Analisar o prompt para determinar o tipo de workflow
+  const lowerPrompt = prompt.toLowerCase();
+  
+  if (lowerPrompt.includes('qualificar') || lowerPrompt.includes('lead') || lowerPrompt.includes('cnpj')) {
+    return generateLeadQualificationWorkflow(workflowId, prompt);
+  } else if (lowerPrompt.includes('email') || lowerPrompt.includes('notificação')) {
+    return generateEmailWorkflow(workflowId, prompt);
+  } else if (lowerPrompt.includes('api') || lowerPrompt.includes('integração')) {
+    return generateApiIntegrationWorkflow(workflowId, prompt);
+  } else {
+    return generateBasicWorkflow(workflowId, prompt);
+  }
+};
+
+// Workflow de qualificação de leads
+const generateLeadQualificationWorkflow = (workflowId: string, prompt: string): Workflow => {
   return {
     id: workflowId,
-    name: `Workflow: ${prompt.substring(0, 50)}...`,
+    name: `Qualificação de Leads`,
+    description: `Workflow para qualificar leads automaticamente baseado em: ${prompt}`,
+    nodes: [
+      {
+        id: "Webhook",
+        name: "Entrada Webhook",
+        type: "n8n-nodes-base.webhook",
+        typeVersion: 1,
+        position: { x: 100, y: 300 },
+        parameters: {
+          path: "qualificar-lead",
+          method: "POST",
+          responseMode: "onReceived"
+        }
+      },
+      {
+        id: "Formatar CNPJ",
+        name: "Limpar CNPJ",
+        type: "n8n-nodes-base.function",
+        position: { x: 300, y: 300 },
+        parameters: {
+          functionCode: "// Limpar e formatar CNPJ\nconst cnpj = $json.cnpj.replace(/\\D/g, '');\nreturn [{ json: { ...$json, cnpj } }];"
+        }
+      },
+      {
+        id: "ReceitaWS",
+        name: "ReceitaWS",
+        type: "n8n-nodes-base.httpRequest",
+        position: { x: 500, y: 100 },
+        parameters: {
+          url: "https://www.receitaws.com.br/v1/cnpj={{$json.cnpj}}",
+          method: "GET",
+          responseFormat: "json"
+        }
+      },
+      {
+        id: "DeepSeek",
+        name: "Classificar com IA",
+        type: "n8n-nodes-base.httpRequest",
+        position: { x: 700, y: 300 },
+        parameters: {
+          url: "https://api.deepseek.com/v1/chat/completions",
+          method: "POST",
+          responseFormat: "json",
+          headers: {
+            "Authorization": "Bearer SUA_DEEPSEEK_API_KEY",
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      {
+        id: "Retorno",
+        name: "Retornar Resultado",
+        type: "n8n-nodes-base.set",
+        position: { x: 900, y: 300 },
+        parameters: {
+          values: {
+            json: {
+              nome: "={{$json.nome}}",
+              cnpj: "={{$json.cnpj}}",
+              score: "={{$json.score}}"
+            }
+          }
+        }
+      }
+    ],
+    connections: {
+      "Entrada Webhook": {
+        main: [[{ node: "Limpar CNPJ", type: "main", index: 0 }]]
+      },
+      "Limpar CNPJ": {
+        main: [[{ node: "ReceitaWS", type: "main", index: 0 }]]
+      },
+      "ReceitaWS": {
+        main: [[{ node: "Classificar com IA", type: "main", index: 0 }]]
+      },
+      "Classificar com IA": {
+        main: [[{ node: "Retornar Resultado", type: "main", index: 0 }]]
+      }
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    userId: ''
+  };
+};
+
+// Workflow de email
+const generateEmailWorkflow = (workflowId: string, prompt: string): Workflow => {
+  return {
+    id: workflowId,
+    name: `Automação de Email`,
+    description: `Workflow para automação de emails baseado em: ${prompt}`,
+    nodes: [
+      {
+        id: "Trigger",
+        name: "Manual Trigger",
+        type: "n8n-nodes-base.manualTrigger",
+        typeVersion: 1,
+        position: { x: 100, y: 300 },
+        parameters: {}
+      },
+      {
+        id: "Gmail",
+        name: "Enviar Email",
+        type: "n8n-nodes-base.gmail",
+        position: { x: 300, y: 300 },
+        parameters: {
+          operation: "send",
+          subject: "Notificação Automática",
+          message: "Este é um email enviado automaticamente pelo workflow."
+        }
+      }
+    ],
+    connections: {
+      "Manual Trigger": {
+        main: [[{ node: "Enviar Email", type: "main", index: 0 }]]
+      }
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    userId: ''
+  };
+};
+
+// Workflow de integração API
+const generateApiIntegrationWorkflow = (workflowId: string, prompt: string): Workflow => {
+  return {
+    id: workflowId,
+    name: `Integração API`,
+    description: `Workflow para integração com APIs baseado em: ${prompt}`,
+    nodes: [
+      {
+        id: "Webhook",
+        name: "Webhook Trigger",
+        type: "n8n-nodes-base.webhook",
+        typeVersion: 1,
+        position: { x: 100, y: 300 },
+        parameters: {
+          path: "api-integration",
+          method: "POST"
+        }
+      },
+      {
+        id: "HTTP Request",
+        name: "Chamada API",
+        type: "n8n-nodes-base.httpRequest",
+        position: { x: 300, y: 300 },
+        parameters: {
+          url: "https://api.exemplo.com/endpoint",
+          method: "GET",
+          responseFormat: "json"
+        }
+      },
+      {
+        id: "Set",
+        name: "Processar Dados",
+        type: "n8n-nodes-base.set",
+        position: { x: 500, y: 300 },
+        parameters: {
+          values: {
+            json: {
+              processedData: "={{$json.data}}"
+            }
+          }
+        }
+      }
+    ],
+    connections: {
+      "Webhook Trigger": {
+        main: [[{ node: "Chamada API", type: "main", index: 0 }]]
+      },
+      "Chamada API": {
+        main: [[{ node: "Processar Dados", type: "main", index: 0 }]]
+      }
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    userId: ''
+  };
+};
+
+// Workflow básico
+const generateBasicWorkflow = (workflowId: string, prompt: string): Workflow => {
+  return {
+    id: workflowId,
+    name: `Workflow Personalizado`,
     description: `Automated workflow generated from: ${prompt}`,
     nodes: [
       {
-        id: uuidv4(),
-        type: 'trigger',
+        id: "Manual Trigger",
         name: 'Manual Trigger',
-        position: { x: 100, y: 100 },
-        data: { label: 'Start' }
+        type: 'n8n-nodes-base.manualTrigger',
+        typeVersion: 1,
+        position: { x: 100, y: 300 },
+        parameters: {}
       },
       {
-        id: uuidv4(),
-        type: 'action',
+        id: "HTTP Request",
         name: 'HTTP Request',
-        position: { x: 300, y: 100 },
-        data: { label: 'API Call' }
+        type: 'n8n-nodes-base.httpRequest',
+        position: { x: 300, y: 300 },
+        parameters: {
+          url: 'https://api.exemplo.com',
+          method: 'GET'
+        }
       }
     ],
-    edges: [
-      {
-        id: uuidv4(),
-        source: 'trigger',
-        target: 'action'
+    connections: {
+      "Manual Trigger": {
+        main: [[{ node: "HTTP Request", type: "main", index: 0 }]]
       }
-    ],
+    },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     userId: ''
@@ -314,7 +518,7 @@ function App() {
     const lowerPrompt = prompt.toLowerCase();
     
     if (lowerPrompt.includes('add') || lowerPrompt.includes('adicionar')) {
-      return `I can help you add new functionality to "${workflow.name}". Based on your request, I suggest adding nodes for the functionality you mentioned. Would you like me to show you how to implement this?`;
+      return `I can help you add new functionality to "${workflow.name}". Based on your request, I suggest adding nodes for the functionality you mentioned. The current workflow has ${workflow.nodes.length} nodes. Would you like me to show you how to implement this?`;
     }
     
     if (lowerPrompt.includes('modify') || lowerPrompt.includes('change') || lowerPrompt.includes('modificar') || lowerPrompt.includes('alterar')) {
@@ -322,7 +526,7 @@ function App() {
     }
     
     if (lowerPrompt.includes('explain') || lowerPrompt.includes('how') || lowerPrompt.includes('explicar') || lowerPrompt.includes('como')) {
-      return `Let me explain how "${workflow.name}" works: This workflow starts with a ${workflow.nodes[0]?.type || 'trigger'} and processes data through ${workflow.nodes.length} nodes. Each node performs a specific function in the automation process.`;
+      return `Let me explain how "${workflow.name}" works: This workflow starts with a ${workflow.nodes[0]?.name || 'trigger'} node and processes data through ${workflow.nodes.length} nodes. Each node performs a specific function in the automation process. The workflow uses n8n's standard node types for maximum compatibility.`;
     }
     
     if (lowerPrompt.includes('error') || lowerPrompt.includes('problem') || lowerPrompt.includes('erro') || lowerPrompt.includes('problema')) {
@@ -334,7 +538,7 @@ function App() {
     }
     
     if (lowerPrompt.includes('delete') || lowerPrompt.includes('remove') || lowerPrompt.includes('deletar') || lowerPrompt.includes('remover')) {
-      return `I can help you remove elements from "${workflow.name}". The workflow currently has ${workflow.nodes.length} nodes and ${workflow.edges.length} connections. What would you like me to remove?`;
+      return `I can help you remove elements from "${workflow.name}". The workflow currently has ${workflow.nodes.length} nodes and ${Object.keys(workflow.connections).length} connections. What would you like me to remove?`;
     }
     
     if (lowerPrompt.includes('test') || lowerPrompt.includes('execute') || lowerPrompt.includes('testar') || lowerPrompt.includes('executar')) {
@@ -346,7 +550,7 @@ function App() {
     }
     
     // Resposta genérica contextual
-    return `I understand you want to discuss "${prompt}" in relation to your workflow "${workflow.name}". This workflow currently has ${workflow.nodes.length} nodes and ${workflow.edges.length} connections. How can I help you with this specific aspect?`;
+    return `I understand you want to discuss "${prompt}" in relation to your workflow "${workflow.name}". This workflow currently has ${workflow.nodes.length} nodes and ${Object.keys(workflow.connections).length} connections. How can I help you with this specific aspect?`;
   };
 
   const handleUpdateWorkflow = async (updatedWorkflow: Workflow) => {

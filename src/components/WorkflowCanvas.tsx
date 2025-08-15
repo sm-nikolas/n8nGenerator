@@ -209,86 +209,98 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
 
   // Enhanced edge rendering with original light theme
   const renderEdges = useMemo(() => {
-    return workflow.edges.map((edge) => {
-      const sourceNode = workflow.nodes.find(n => n.id === edge.source);
-      const targetNode = workflow.nodes.find(n => n.id === edge.target);
+    const edges: JSX.Element[] = [];
+    
+    // Convert n8n connections format to edges for rendering
+    Object.entries(workflow.connections).forEach(([sourceNodeName, connections]) => {
+      const sourceNode = workflow.nodes.find(n => n.name === sourceNodeName);
+      if (!sourceNode) return;
       
-      if (!sourceNode || !targetNode) return null;
-      
-      const sourceNodeType = getNodeType(sourceNode.type);
-      const targetNodeType = getNodeType(targetNode.type);
-      
-      // Calculate connection points based on node positions and types
-      const sourcePos = nodePositionsRef.current.get(sourceNode.id) || sourceNode.position;
-      const targetPos = nodePositionsRef.current.get(targetNode.id) || targetNode.position;
-      
-      // Source node output point (right side)
-      const sourceWidth = sourceNodeType.isTrigger ? 160 : 140;
-      const startX = sourcePos.x + sourceWidth;
-      const startY = sourcePos.y + 35; // Node height / 2 (70/2)
-      
-      // Target node input point (left side) - Only for non-trigger nodes
-      const endX = targetPos.x;
-      const endY = targetPos.y + 35; // Node height / 2 (70/2)
-      
-      // Create smooth curved path like original
-      const pathData = createCurvedPath(startX, startY, endX, endY);
-      
-      // Calculate arrow head
-      const arrowSize = 8;
-      const angle = Math.atan2(endY - startY, endX - startX);
-      const arrowX = endX - arrowSize * Math.cos(angle);
-      const arrowY = endY - arrowSize * Math.sin(angle);
-      
-      const arrowPath = `M ${arrowX} ${arrowY} L ${arrowX - arrowSize * Math.cos(angle - Math.PI/6)} ${arrowY - arrowSize * Math.sin(angle - Math.PI/6)} L ${arrowX - arrowSize * Math.cos(angle + Math.PI/6)} ${arrowY - arrowSize * Math.sin(angle + Math.PI/6)} Z`;
-      
-      return (
-        <g key={edge.id} className="edge-group">
-          {/* Main connection line - original style */}
-          <path
-            d={pathData}
-            stroke="#6B7280"
-            strokeWidth="3"
-            fill="none"
-            className="drop-shadow-sm"
-          />
+      connections.main.forEach((mainConnections, outputIndex) => {
+        mainConnections.forEach((connection, connectionIndex) => {
+          const targetNode = workflow.nodes.find(n => n.name === connection.node);
+          if (!targetNode) return;
           
-          {/* Arrow head */}
-          <path
-            d={arrowPath}
-            fill="#6B7280"
-            className="drop-shadow-sm"
-          />
+          const sourceNodeType = getNodeType(sourceNode.type);
+          const targetNodeType = getNodeType(targetNode.type);
           
-          {/* Edge label - Show method for webhook connections */}
-          {edge.source.includes('webhook') && (
-            <text
-              x={(startX + endX) / 2}
-              y={(startY + endY) / 2 - 10}
-              textAnchor="middle"
-              className="text-xs font-medium fill-gray-600 pointer-events-none"
-              style={{ fontSize: '10px' }}
-            >
-              POST
-            </text>
-          )}
+          // Calculate connection points based on node positions and types
+          const sourcePos = nodePositionsRef.current.get(sourceNode.id) || sourceNode.position;
+          const targetPos = nodePositionsRef.current.get(targetNode.id) || targetNode.position;
           
-          {/* Default edge label */}
-          {!edge.source.includes('webhook') && (
-            <text
-              x={(startX + endX) / 2}
-              y={(startY + endY) / 2 - 10}
-              textAnchor="middle"
-              className="text-xs font-medium fill-gray-600 pointer-events-none"
-              style={{ fontSize: '10px' }}
-            >
-              Connection
-            </text>
-          )}
-        </g>
-      );
+          // Source node output point (right side)
+          const sourceWidth = sourceNodeType.isTrigger ? 160 : 140;
+          const startX = sourcePos.x + sourceWidth;
+          const startY = sourcePos.y + 35; // Node height / 2 (70/2)
+          
+          // Target node input point (left side) - Only for non-trigger nodes
+          const endX = targetPos.x;
+          const endY = targetPos.y + 35; // Node height / 2 (70/2)
+          
+          // Create smooth curved path like original
+          const pathData = createCurvedPath(startX, startY, endX, endY);
+          
+          // Calculate arrow head
+          const arrowSize = 8;
+          const angle = Math.atan2(endY - startY, endX - startX);
+          const arrowX = endX - arrowSize * Math.cos(angle);
+          const arrowY = endY - arrowSize * Math.sin(angle);
+          
+          const arrowPath = `M ${arrowX} ${arrowY} L ${arrowX - arrowSize * Math.cos(angle - Math.PI/6)} ${arrowY - arrowSize * Math.sin(angle - Math.PI/6)} L ${arrowX - arrowSize * Math.cos(angle + Math.PI/6)} ${arrowY - arrowSize * Math.sin(angle + Math.PI/6)} Z`;
+          
+          const edgeKey = `${sourceNode.id}-${targetNode.id}-${outputIndex}-${connectionIndex}`;
+          
+          edges.push(
+            <g key={edgeKey} className="edge-group">
+              {/* Main connection line - original style */}
+              <path
+                d={pathData}
+                stroke="#6B7280"
+                strokeWidth="3"
+                fill="none"
+                className="drop-shadow-sm"
+              />
+              
+              {/* Arrow head */}
+              <path
+                d={arrowPath}
+                fill="#6B7280"
+                className="drop-shadow-sm"
+              />
+              
+              {/* Edge label - Show method for webhook connections */}
+              {sourceNode.type.includes('webhook') && (
+                <text
+                  x={(startX + endX) / 2}
+                  y={(startY + endY) / 2 - 10}
+                  textAnchor="middle"
+                  className="text-xs font-medium fill-gray-600 pointer-events-none"
+                  style={{ fontSize: '10px' }}
+                >
+                  {sourceNode.parameters?.method || 'POST'}
+                </text>
+              )}
+              
+              {/* Default edge label */}
+              {!sourceNode.type.includes('webhook') && (
+                <text
+                  x={(startX + endX) / 2}
+                  y={(startY + endY) / 2 - 10}
+                  textAnchor="middle"
+                  className="text-xs font-medium fill-gray-600 pointer-events-none"
+                  style={{ fontSize: '10px' }}
+                >
+                  main
+                </text>
+              )}
+            </g>
+          );
+        });
+      });
     });
-  }, [workflow.edges, workflow.nodes]);
+    
+    return edges;
+  }, [workflow.connections, workflow.nodes, getNodeType, createCurvedPath]);
 
   // Enhanced curved path creation
   const createCurvedPath = useCallback((x1: number, y1: number, x2: number, y2: number) => {
@@ -364,20 +376,20 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
         </div>
         
         {/* Node Body - light background with centered content */}
-        <div className="px-3 py-2 cursor-pointer bg-gray-50 rounded-b-lg h-full flex flex-col items-center justify-center text-center">
+        <div className="px-3 py-2 cursor-pointer bg-gray-50 rounded-b-lg flex flex-col items-center justify-center text-center" style={{ height: '35px' }}>
           {/* Node name centered */}
           <h4 className="font-medium text-[#101330] text-sm truncate w-full">{node.name}</h4>
           
           {/* Additional info for specific node types */}
-          {node.type === 'webhook' && (
+          {node.type.includes('webhook') && node.parameters?.method && (
             <div className="mt-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-              POST
+              {node.parameters.method}
             </div>
           )}
           
-          {node.type === 'api' && node.data?.url && (
+          {node.type.includes('httpRequest') && node.parameters?.url && (
             <div className="mt-1 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded truncate w-full">
-              POST: {node.data.url}
+              {node.parameters.method || 'GET'}: {node.parameters.url}
             </div>
           )}
         </div>
