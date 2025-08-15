@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Workflow } from '../types'; // Removido Conversation
 import { useRouter, ViewType } from './useRouter';
 
@@ -10,7 +10,7 @@ interface AppState {
 }
 
 export function useAppState() {
-  const { workflowId, view, navigateToView, navigateToWorkflow, navigateToNewChat, resetToDefault } = useRouter();
+  const { workflowId, view, navigateToView, navigateToWorkflow, resetToDefault } = useRouter();
   
   const [state, setState] = useState<AppState>({
     currentWorkflow: null,
@@ -32,6 +32,13 @@ export function useAppState() {
   }, [updateState]);
 
   const setCurrentWorkflow = useCallback((workflow: Workflow | null) => {
+    // Salvar no localStorage
+    if (workflow) {
+      localStorage.setItem('activeWorkflowId', workflow.id);
+    } else {
+      localStorage.removeItem('activeWorkflowId');
+    }
+    
     updateState({ currentWorkflow: workflow });
   }, [updateState]);
 
@@ -40,6 +47,8 @@ export function useAppState() {
   }, [updateState]);
 
   const resetAppState = useCallback(() => {
+    // Limpar localStorage e estado
+    localStorage.removeItem('activeWorkflowId');
     setCurrentWorkflow(null);
     resetToDefault();
   }, [setCurrentWorkflow, resetToDefault]);
@@ -50,6 +59,8 @@ export function useAppState() {
   }, [setCurrentWorkflow, navigateToWorkflow]);
 
   const navigateToNewChatHandler = useCallback(() => {
+    // Limpar localStorage e estado para novo chat
+    localStorage.removeItem('activeWorkflowId');
     setCurrentWorkflow(null);
     resetToDefault();
   }, [setCurrentWorkflow, resetToDefault]);
@@ -62,12 +73,7 @@ export function useAppState() {
     }
   }, [state.currentWorkflow, navigateToView, resetToDefault]);
 
-  // Sincronizar o estado com o roteamento
-  useEffect(() => {
-    if (!workflowId && state.currentWorkflow) {
-      setCurrentWorkflow(null);
-    }
-  }, [workflowId, state.currentWorkflow, setCurrentWorkflow]);
+
 
   return {
     currentWorkflow: state.currentWorkflow,

@@ -6,11 +6,15 @@ import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 export const GoogleAuthCallback: React.FC = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [showLoading, setShowLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Timer mínimo de 1 segundo
+        const minLoadingPromise = new Promise(resolve => setTimeout(resolve, 1000));
+        
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -21,10 +25,12 @@ export const GoogleAuthCallback: React.FC = () => {
 
         if (data.session) {
           setStatus('success');
-          // Redirecionar para a página principal após um breve delay
-          setTimeout(() => {
-            navigate('/');
-          }, 1500);
+          // Aguardar tanto a autenticação quanto o tempo mínimo
+          await Promise.all([
+            minLoadingPromise,
+            new Promise(resolve => setTimeout(resolve, 1500))
+          ]);
+          navigate('/');
         } else {
           setError('Authentication failed');
           setStatus('error');
@@ -40,11 +46,9 @@ export const GoogleAuthCallback: React.FC = () => {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-bg">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 text-white animate-spin mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Authenticating...</h2>
-          <p className="text-white/80">Please wait while we complete your sign-in</p>
+      <div className="min-h-screen flex items-center justify-center bg-white/80 backdrop-blur-sm">
+        <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center shadow-2xl">
+          <Loader2 className="h-10 w-10 text-white animate-spin" />
         </div>
       </div>
     );

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, memo, useMemo } from 'react';
-import { Workflow, WorkflowNode, WorkflowEdge } from '../types';
-import { Settings, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Workflow, WorkflowNode } from '../types';
+import { ZoomIn, ZoomOut, RotateCcw, GitBranch } from 'lucide-react';
 // import { NodeEditor } from './NodeEditor'; // Removed in read-only mode
 // import Draggable from 'react-draggable'; // Removed in read-only mode
 
@@ -105,7 +105,7 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
 
   const handleNodeClick = useCallback((node: WorkflowNode) => {
     // In read-only mode, just show basic info or do nothing
-    console.log('Node clicked (read-only mode):', node.name);
+    
     // setSelectedNode(node); // Disabled in read-only mode
   }, []);
 
@@ -282,7 +282,7 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
               className="text-xs font-medium fill-gray-600 pointer-events-none"
               style={{ fontSize: '10px' }}
             >
-              {edge.label || 'Connection'}
+              Connection
             </text>
           )}
         </g>
@@ -406,39 +406,25 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
   return (
     <div className="h-full flex bg-gray-50">
       <div className="flex-1 relative overflow-hidden">
-        {/* Header - original light theme */}
-        <div className="absolute top-0 left-0 right-0 bg-white border-b border-gray-200 p-4 z-20 shadow-sm">
+        {/* Header - padronizado com PreviewPanel */}
+        <div className="absolute top-0 left-0 right-0 bg-white border-b border-gray-200 p-3 z-20 shadow-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-[#FF4F79] rounded-lg flex items-center justify-center shadow-sm">
-                <Settings className="h-5 w-5 text-white" />
-              </div>
+            <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-[#FF4F79] rounded-lg flex items-center justify-center">
+              <GitBranch className="h-4 w-4 text-white" />
+            </div>
               <div>
-                <h2 className="text-xl font-semibold text-[#101330] mb-1">{workflow.name}</h2>
-                <p className="text-sm text-[#6B7280] mb-2">{workflow.description}</p>
-                <div className="flex gap-3">
-                  <span className="text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full font-medium">
-                    Modo Visualização
-                  </span>
-                  <span className="text-xs text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
-                    {workflow.nodes.length} nodes
-                  </span>
-                  <span className="text-xs text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
-                    {workflow.edges.length} conexões
-                  </span>
-                  <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                    n8n Style
-                  </span>
-                </div>
+                <h2 className="text-lg font-semibold text-[#101330]">{workflow.name}</h2>
+                <p className="text-sm text-[#6B7280]">{workflow.description}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {/* Controles de Zoom */}
-              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+              <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1 border border-gray-200">
                 <button
                   onClick={handleZoomOut}
-                  className="p-1.5 hover:bg-white rounded transition-colors"
+                  className="p-1.5 hover:bg-gray-50 rounded transition-colors"
                   title="Zoom Out"
                 >
                   <ZoomOut className="h-4 w-4 text-[#6B7280]" />
@@ -448,7 +434,7 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
                 </span>
                 <button
                   onClick={handleZoomIn}
-                  className="p-1.5 hover:bg-white rounded transition-colors"
+                  className="p-1.5 hover:bg-gray-50 rounded transition-colors"
                   title="Zoom In"
                 >
                   <ZoomIn className="h-4 w-4 text-[#6B7280]" />
@@ -456,7 +442,7 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
                 <div className="w-px h-4 bg-gray-300 mx-1"></div>
                 <button
                   onClick={handleResetView}
-                  className="p-1.5 hover:bg-white rounded transition-colors"
+                  className="p-1.5 hover:bg-gray-50 rounded transition-colors"
                   title="Reset View"
                 >
                   <RotateCcw className="h-4 w-4 text-[#6B7280]" />

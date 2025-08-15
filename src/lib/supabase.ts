@@ -27,9 +27,5 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 
 // Log de configuração em desenvolvimento
 if (ENV_CONFIG.APP_ENVIRONMENT === 'development') {
-  console.log('🔧 Supabase client configured with:', {
-    url: supabaseUrl,
-    hasAnonKey: !!supabaseAnonKey,
-    environment: ENV_CONFIG.APP_ENVIRONMENT,
-  });
+
 }

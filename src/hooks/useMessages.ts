@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Message, Workflow } from '../types'; // Removido Conversation
 import { supabase } from '../lib/supabase';
+import { toast } from 'react-toastify';
 
 export function useMessages(userId: string | undefined) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -19,10 +20,10 @@ export function useMessages(userId: string | undefined) {
         .eq('user_id', userId)
         .order('message_order', { ascending: true });
 
-      if (error) {
-        console.error('Erro ao buscar mensagens:', error);
-        return;
-      }
+                   if (error) {
+               toast.error('Erro ao buscar mensagens. Tente novamente.');
+               return;
+             }
 
       const formattedMessages: Message[] = data.map(row => ({
         id: row.id,
@@ -36,9 +37,9 @@ export function useMessages(userId: string | undefined) {
       }));
 
       setMessages(formattedMessages);
-    } catch (error) {
-      console.error('Erro ao buscar mensagens:', error);
-    }
+               } catch (error) {
+             toast.error('Erro ao buscar mensagens. Tente novamente.');
+           }
   }, [userId]);
 
   const saveMessage = useCallback(async (
@@ -82,10 +83,10 @@ export function useMessages(userId: string | undefined) {
         .select('*')
         .single();
 
-      if (error) {
-        console.error('Erro ao salvar mensagem:', error);
-        throw error;
-      }
+                   if (error) {
+               toast.error('Erro ao salvar mensagem. Tente novamente.');
+               throw error;
+             }
 
       const savedMessage: Message = {
         id: data.id,
@@ -102,10 +103,10 @@ export function useMessages(userId: string | undefined) {
       setMessages(prev => [...prev, savedMessage]);
 
       return savedMessage;
-    } catch (error) {
-      console.error('Erro ao salvar mensagem:', error);
-      throw error;
-    }
+               } catch (error) {
+             toast.error('Erro ao salvar mensagem. Tente novamente.');
+             throw error;
+           }
   }, [userId, messages]);
 
   const clearMessages = useCallback(() => {

@@ -30,12 +30,10 @@ export function validateEnvironment() {
   );
   
   if (missingVars.length > 0) {
-    console.error('❌ Missing required environment variables:', missingVars);
-    console.error('Please check your .env.local file');
     return false;
   }
   
-  console.log('✅ Environment configuration validated');
+
   return true;
 }
 

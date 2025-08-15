@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
 import { Workflow } from '../types';
+import { toast } from 'react-toastify';
 
 type WorkflowRow = Database['public']['Tables']['workflows']['Row'];
 
@@ -38,7 +39,7 @@ export function useWorkflows(userId: string | undefined) {
         setWorkflows(workflowsWithNodes);
       }
     } catch (err) {
-      console.error('Error fetching workflows:', err);
+      toast.error('Erro ao buscar workflows. Tente novamente.');
       setError(err instanceof Error ? err.message : 'Failed to fetch workflows');
     } finally {
       setLoading(false);
@@ -95,7 +96,7 @@ export function useWorkflows(userId: string | undefined) {
 
       throw new Error('Failed to save workflow');
     } catch (err) {
-      console.error('Error saving workflow:', err);
+      toast.error('Erro ao salvar workflow. Tente novamente.');
       throw err;
     }
   }, [userId]);
@@ -112,7 +113,7 @@ export function useWorkflows(userId: string | undefined) {
       // Update local state
       setWorkflows(prev => prev.filter(w => w.id !== workflowId));
     } catch (err) {
-      console.error('Error deleting workflow:', err);
+      toast.error('Erro ao deletar workflow. Tente novamente.');
       throw err;
     }
   }, []);

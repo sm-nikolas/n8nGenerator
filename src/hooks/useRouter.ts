@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Workflow } from '../types'; // Removido Conversation
 
 export type ViewType = 'chat' | 'workflow' | 'preview';
 
@@ -32,6 +31,7 @@ export function useRouter() {
       validView = 'chat';
     }
     
+    // Garantir que a URL esteja sempre sincronizada com o estado
     const currentParams = new URLSearchParams(window.location.search);
     const needsUpdate = 
       currentParams.get('workflow') !== validWorkflowId ||
@@ -47,6 +47,7 @@ export function useRouter() {
       
       newUrl.searchParams.set('view', validView);
       
+      // Usar replaceState para garantir que a URL seja atualizada
       window.history.replaceState(
         { workflowId: validWorkflowId, view: validView },
         '',
@@ -74,13 +75,37 @@ export function useRouter() {
     
     url.searchParams.set('view', view);
     
-    window.history.pushState(
+    // Usar replaceState para evitar entradas desnecessárias no histórico
+    window.history.replaceState(
       { workflowId, view },
       '',
       url.toString()
     );
     
     setState({ workflowId, view });
+  }, []);
+
+  // Função para forçar atualização da URL sem mudar o estado
+  const updateUrl = useCallback((
+    workflowId: string | null, 
+    view: ViewType
+  ) => {
+    const url = new URL(window.location.href);
+    
+    if (workflowId) {
+      url.searchParams.set('workflow', workflowId);
+    } else {
+      url.searchParams.delete('workflow');
+    }
+    
+    url.searchParams.set('view', view);
+    
+    // Atualizar apenas a URL, não o estado
+    window.history.replaceState(
+      { workflowId, view },
+      '',
+      url.toString()
+    );
   }, []);
 
   const navigateToView = useCallback((view: ViewType) => {
@@ -148,6 +173,7 @@ export function useRouter() {
     navigateToView,
     navigateToWorkflow,
     navigateToNewChat,
-    resetToDefault
+    resetToDefault,
+    updateUrl
   };
 }

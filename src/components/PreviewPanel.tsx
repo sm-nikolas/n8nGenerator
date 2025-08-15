@@ -1,5 +1,6 @@
 import React, { useState, useCallback, memo } from 'react';
 import { Workflow } from '../types';
+import { toast } from 'react-toastify';
 import { Copy, Check, Download, Eye, Code2, FileText } from 'lucide-react';
 
 interface PreviewPanelProps {
@@ -16,7 +17,7 @@ export const PreviewPanel = memo(function PreviewPanel({ workflow }: PreviewPane
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
+      toast.error('Erro ao copiar para a área de transferência. Tente novamente.');
     }
   }, []);
 
@@ -67,7 +68,11 @@ export const PreviewPanel = memo(function PreviewPanel({ workflow }: PreviewPane
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-[#FF4F79] rounded-lg flex items-center justify-center">
-              <FileText className="h-4 w-4 text-white" />
+              {activeTab === 'json' ? (
+                <Eye className="h-4 w-4 text-white" />
+              ) : (
+                <Code2 className="h-4 w-4 text-white" />
+              )}
             </div>
             <div>
               <h2 className="text-lg font-semibold text-[#101330]">{workflow.name}</h2>

@@ -51,7 +51,7 @@ export function validateAuthConfig() {
   );
   
   if (missingVars.length > 0) {
-    console.error('Missing required environment variables:', missingVars);
+
     return false;
   }
   

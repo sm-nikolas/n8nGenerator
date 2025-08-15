@@ -96,7 +96,7 @@ export function measurePerformance<T extends (...args: any[]) => any>(
     const end = performance.now();
     
     if (import.meta.env.DEV) {
-      console.log(`${name} took ${(end - start).toFixed(2)}ms`);
+  
     }
     
     return result;

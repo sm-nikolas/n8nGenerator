@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './hooks/useAuth';
@@ -9,7 +9,10 @@ import { ViewType } from './hooks/useRouter';
 import { AuthModal } from './components/AuthModal';
 import { LandingPage } from './components/LandingPage';
 import { Layout } from './components/Layout';
-import { LoadingScreen } from './components/LoadingScreen';
+import { Loader2 } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import { GoogleAuthCallback } from './components/GoogleAuthCallback';
 import { Message, Workflow } from './types'; // Removido Conversation
 import { supabase } from './lib/supabase';
@@ -72,25 +75,52 @@ function App() {
     navigateToView,
   } = useAppState();
 
-  // Sincronizar workflow atual com o roteamento
+  // Estado para controlar loading de sincronização
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  // Restaurar workflow ativo do localStorage após carregar workflows
   useEffect(() => {
-    if (user && workflows && workflowId) {
-      const workflow = workflows.find(w => w.id === workflowId);
-      if (workflow) {
-        setCurrentWorkflow(workflow);
-        fetchMessagesForWorkflow(workflowId);
-      } else {
-        // Workflow não encontrado, limpar URL e estado
-        resetAppState();
+    const restoreWorkflow = async () => {
+      if (user && workflows && workflows.length > 0) {
+        // Tentar restaurar do localStorage
+        const savedWorkflowId = localStorage.getItem('activeWorkflowId');
+        
+        if (savedWorkflowId && !currentWorkflow) {
+          setIsRestoring(true);
+          
+          try {
+            // Iniciar timer mínimo de 1 segundo
+            const minLoadingPromise = new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const workflow = workflows.find(w => w.id === savedWorkflowId);
+            
+            if (workflow) {
+              setCurrentWorkflow(workflow);
+              
+              // Aguardar tanto a restauração quanto o tempo mínimo
+              await Promise.all([
+                fetchMessagesForWorkflow(savedWorkflowId),
+                minLoadingPromise
+              ]);
+            } else {
+              localStorage.removeItem('activeWorkflowId');
+              
+              // Aguardar apenas o tempo mínimo
+              await minLoadingPromise;
+            }
+          } catch {
+            return;
+          } finally {
+            setIsRestoring(false);
+          }
+        }
       }
-    } else {
-      // Sem workflow na URL, garantir estado inicial limpo
-      setCurrentWorkflow(null);
-      if (!workflowId) {
-        clearMessages();
-      }
-    }
-  }, [user, workflows, workflowId, setCurrentWorkflow, resetAppState, fetchMessagesForWorkflow, clearMessages]);
+    };
+
+    restoreWorkflow();
+  }, [user, workflows, setCurrentWorkflow, fetchMessagesForWorkflow]);
+
+
 
   // Carregar mensagens quando o workflow mudar
   useEffect(() => {
@@ -98,6 +128,26 @@ function App() {
       fetchMessagesForWorkflow(currentWorkflow.id);
     }
   }, [currentWorkflow?.id, user, fetchMessagesForWorkflow]);
+
+
+
+  // Sincronizar URL quando workflow for restaurado
+  useEffect(() => {
+    if (currentWorkflow && workflowId !== currentWorkflow.id) {
+      navigateToWorkflow(currentWorkflow, 'chat');
+    }
+  }, [currentWorkflow, workflowId, navigateToWorkflow]);
+
+  // Loading state inicial para evitar piscar azul
+  if (authLoading) {
+    return (
+      <div className="h-screen bg-white/80 backdrop-blur-sm flex items-center justify-center">
+        <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center shadow-2xl">
+          <Loader2 className="h-8 w-8 text-white animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   const addMessage = async (
     message: Omit<Message, 'id' | 'timestamp' | 'messageOrder' | 'metadata'>, 
@@ -136,9 +186,8 @@ function App() {
       }
       
       return savedMessage;
-    } catch (error) {
-      console.error('Erro ao salvar mensagem:', error);
-      throw error;
+    } catch {
+      return;
     }
   };
 
@@ -157,10 +206,10 @@ function App() {
         .eq('user_id', user.id);
       
       if (error) {
-        console.error('Erro ao atualizar mensagem:', error);
+        toast.error('Erro ao atualizar mensagem. Tente novamente.');
       }
     } catch (error) {
-      console.error('Erro ao atualizar mensagem:', error);
+      toast.error('Erro ao atualizar mensagem. Tente novamente.');
     }
   };
 
@@ -247,15 +296,15 @@ function App() {
         ...(shouldGenerateNewWorkflow && workflowToUse ? { workflow: workflowToUse } : {})
       };
       
-      await addMessage(assistantMessage, workflowToUse?.id);
-      
-    } catch (error) {
-      console.error('Erro ao salvar workflow:', error);
-      await addMessage({
-        type: 'assistant',
-        content: 'Sorry, there was an error processing your request. Please try again.',
-      });
-    }
+                   await addMessage(assistantMessage, workflowToUse?.id);
+             
+           } catch (error) {
+             toast.error('Erro ao processar sua solicitação. Tente novamente.');
+             await addMessage({
+               type: 'assistant',
+               content: 'Sorry, there was an error processing your request. Please try again.',
+             });
+           }
     
     setLoading(false);
   };
@@ -306,8 +355,9 @@ function App() {
     try {
       const savedWorkflow = await saveWorkflow(updatedWorkflow);
       setCurrentWorkflow(savedWorkflow);
+      toast.success('Workflow atualizado com sucesso!');
     } catch (error) {
-      console.error('Erro ao atualizar workflow:', error);
+      toast.error('Erro ao atualizar workflow. Tente novamente.');
     }
   };
 
@@ -321,8 +371,9 @@ function App() {
         resetAppState();
         clearMessages();
       }
+      toast.success('Workflow deletado com sucesso!');
     } catch (error) {
-      console.error('Erro ao deletar workflow:', error);
+      toast.error('Erro ao deletar workflow. Tente novamente.');
     }
   };
 
@@ -346,10 +397,7 @@ function App() {
     setAuthModal(true);
   };
 
-  // Loading state
-  if (authLoading) {
-    return <LoadingScreen />;
-  }
+
 
   return (
     <Router>
@@ -368,7 +416,7 @@ function App() {
                 workflows={workflows}
                 currentWorkflow={currentWorkflow}
                 messages={messages}
-                isLoading={isLoading}
+                isLoading={isLoading || isRestoring}
                 sidebarOpen={sidebarOpen}
                 view={view}
                 onToggleSidebar={toggleSidebar}
@@ -386,6 +434,20 @@ function App() {
           </>
         } />
       </Routes>
+      
+      {/* Toast Container para notificações */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </Router>
   );
 }

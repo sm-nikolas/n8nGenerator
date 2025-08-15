@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Session, Provider } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { AUTH_CONFIG, AUTH_STATES, type AuthState } from '../config/auth';
+import { toast } from 'react-toastify';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,7 +14,7 @@ export function useAuth() {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
-        console.error('Error getting session:', error);
+        toast.error('Erro ao verificar sessão. Tente novamente.');
         setAuthState(AUTH_STATES.ERROR);
       } else if (session) {
         setSession(session);
@@ -29,8 +30,6 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
-      
       if (event === 'SIGNED_IN' && session) {
         setSession(session);
         setUser(session.user);
@@ -62,13 +61,13 @@ export function useAuth() {
       });
 
       if (error) {
-        console.error('Google sign in error:', error);
+        toast.error('Erro no login com Google. Tente novamente.');
         throw error;
       }
 
       return { data, error: null };
     } catch (error) {
-      console.error('Google sign in failed:', error);
+      toast.error('Falha no login com Google. Tente novamente.');
       return { 
         data: null, 
         error: error instanceof Error ? error : new Error('Sign in failed') 
@@ -85,13 +84,13 @@ export function useAuth() {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error('Sign out error:', error);
+        toast.error('Erro ao fazer logout. Tente novamente.');
         throw error;
       }
 
       return { error: null };
     } catch (error) {
-      console.error('Sign out failed:', error);
+      toast.error('Falha ao fazer logout. Tente novamente.');
       return { 
         error: error instanceof Error ? error : new Error('Sign out failed') 
       };
@@ -111,13 +110,13 @@ export function useAuth() {
         .single();
       
       if (error) {
-        console.error('Error fetching user profile:', error);
+        toast.error('Erro ao buscar perfil do usuário. Tente novamente.');
         throw error;
       }
       
       return { data, error: null };
     } catch (error) {
-      console.error('Failed to fetch user profile:', error);
+      toast.error('Falha ao buscar perfil do usuário. Tente novamente.');
       return { 
         data: null, 
         error: error instanceof Error ? error : new Error('Failed to fetch profile') 
@@ -138,13 +137,13 @@ export function useAuth() {
         });
       
       if (error) {
-        console.error('Error updating user profile:', error);
+        toast.error('Erro ao atualizar perfil do usuário. Tente novamente.');
         throw error;
       }
       
       return { data, error: null };
     } catch (error) {
-      console.error('Failed to update user profile:', error);
+      toast.error('Falha ao atualizar perfil do usuário. Tente novamente.');
       return { 
         data: null, 
         error: error instanceof Error ? error : new Error('Failed to update profile') 
@@ -157,7 +156,7 @@ export function useAuth() {
       const { data, error } = await supabase.auth.refreshSession();
       
       if (error) {
-        console.error('Session refresh error:', error);
+        toast.error('Erro ao renovar sessão. Tente novamente.');
         throw error;
       }
       
@@ -168,7 +167,7 @@ export function useAuth() {
       
       return { data, error: null };
     } catch (error) {
-      console.error('Session refresh failed:', error);
+      toast.error('Falha ao renovar sessão. Tente novamente.');
       return { 
         data: null, 
         error: error instanceof Error ? error : new Error('Session refresh failed') 
