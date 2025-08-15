@@ -276,7 +276,7 @@ export const ChatInterface = memo(function ChatInterface({
                       {currentWorkflow.nodes.length} nodes
                     </span>
                     <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                      {currentWorkflow.edges.length} edges
+                      {Object.keys(currentWorkflow.connections).length} connections
                     </span>
                     <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
                       {new Date(currentWorkflow.createdAt).toLocaleDateString()}
