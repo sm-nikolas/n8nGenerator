@@ -10,48 +10,16 @@ import { AuthModal } from './components/AuthModal';
 import { LandingPage } from './components/LandingPage';
 import { Layout } from './components/Layout';
 import { Loader2 } from 'lucide-react';
-import { ToastContainer, toast } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
+import { showErrorToast, showSuccessToast } from './utils/toastUtils';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { GoogleAuthCallback } from './components/GoogleAuthCallback';
 import { Message, Workflow } from './types'; // Removido Conversation
 import { supabase } from './lib/supabase';
+import { generateMockWorkflow } from './data/mockWorkflows';
 
-// Função para gerar workflow mock
-const generateMockWorkflow = (prompt: string): Workflow => {
-  const workflowId = uuidv4();
-  return {
-    id: workflowId,
-    name: `Workflow: ${prompt.substring(0, 50)}...`,
-    description: `Automated workflow generated from: ${prompt}`,
-    nodes: [
-      {
-        id: uuidv4(),
-        type: 'trigger',
-        name: 'Manual Trigger',
-        position: { x: 100, y: 100 },
-        data: { label: 'Start' }
-      },
-      {
-        id: uuidv4(),
-        type: 'action',
-        name: 'HTTP Request',
-        position: { x: 300, y: 100 },
-        data: { label: 'API Call' }
-      }
-    ],
-    edges: [
-      {
-        id: uuidv4(),
-        source: 'trigger',
-        target: 'action'
-      }
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    userId: ''
-  };
-};
+// Função para gerar workflow mock - agora importada do arquivo mockWorkflows.ts
 
 function App() {
   const { user, loading: authLoading } = useAuth();
@@ -206,10 +174,10 @@ function App() {
         .eq('user_id', user.id);
       
       if (error) {
-        toast.error('Erro ao atualizar mensagem. Tente novamente.');
+        showErrorToast('Erro ao atualizar mensagem. Tente novamente.', 'update-message-error');
       }
     } catch (error) {
-      toast.error('Erro ao atualizar mensagem. Tente novamente.');
+      showErrorToast('Erro ao atualizar mensagem. Tente novamente.', 'update-message-error');
     }
   };
 
@@ -259,7 +227,7 @@ function App() {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Gerar novo workflow baseado no prompt
-        const workflow = generateMockWorkflow(prompt);
+        const workflow = generateMockWorkflow();
         workflowToUse = await saveWorkflow(workflow);
         
         // Atualizar a mensagem inicial do usuário com o workflowId correto
@@ -299,7 +267,7 @@ function App() {
                    await addMessage(assistantMessage, workflowToUse?.id);
              
            } catch (error) {
-             toast.error('Erro ao processar sua solicitação. Tente novamente.');
+             showErrorToast('Erro ao processar sua solicitação. Tente novamente.', 'process-request-error');
              await addMessage({
                type: 'assistant',
                content: 'Sorry, there was an error processing your request. Please try again.',
@@ -355,9 +323,9 @@ function App() {
     try {
       const savedWorkflow = await saveWorkflow(updatedWorkflow);
       setCurrentWorkflow(savedWorkflow);
-      toast.success('Workflow atualizado com sucesso!');
+      showSuccessToast('Workflow atualizado com sucesso!', 'workflow-updated');
     } catch (error) {
-      toast.error('Erro ao atualizar workflow. Tente novamente.');
+      showErrorToast('Erro ao atualizar workflow. Tente novamente.', 'workflow-update-error');
     }
   };
 
@@ -371,9 +339,9 @@ function App() {
         resetAppState();
         clearMessages();
       }
-      toast.success('Workflow deletado com sucesso!');
+      showSuccessToast('Workflow deletado com sucesso!', 'workflow-deleted');
     } catch (error) {
-      toast.error('Erro ao deletar workflow. Tente novamente.');
+      showErrorToast('Erro ao deletar workflow. Tente novamente.', 'workflow-delete-error');
     }
   };
 
