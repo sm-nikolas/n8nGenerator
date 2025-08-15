@@ -98,53 +98,66 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
       shape: 'pill',
       isTrigger: false
     },
+    'manualTrigger': {
+      name: 'Manual Trigger',
+      color: 'bg-red-600',
+      icon: <Zap className="h-4 w-4 text-white" />,
+      shape: 'pill',
+      isTrigger: true
+    },
     'gmail': {
       name: 'Gmail',
-      color: 'bg-red-600',
+      color: 'bg-red-500',
       icon: <FileText className="h-4 w-4 text-white" />,
       shape: 'pill',
       isTrigger: false
-    },
-    'slack': {
-      name: 'Slack',
-      color: 'bg-indigo-600',
-      icon: <FileText className="h-4 w-4 text-white" />,
-      shape: 'pill',
-      isTrigger: false
-    },
+    }
   }), []);
 
-  const getNodeType = useCallback((type: string) => {
-    // Map n8n node types exactly as in the JSON
-    if (type.includes('n8n-nodes-base.webhook')) return nodeTypes.webhook;
-    if (type.includes('n8n-nodes-base.function')) return nodeTypes.function;
-    if (type.includes('n8n-nodes-base.httpRequest')) return nodeTypes.httpRequest;
-    if (type.includes('n8n-nodes-base.set')) return nodeTypes.set;
+  const getNodeType = useCallback((nodeType: string) => {
+    // Extract the base type from n8n node type
+    if (nodeType.includes('webhook')) return nodeTypes.webhook;
+    if (nodeType.includes('function')) return nodeTypes.function;
+    if (nodeType.includes('httpRequest')) return nodeTypes.httpRequest;
+    if (nodeType.includes('search')) return nodeTypes.search;
+    if (nodeType.includes('set')) return nodeTypes.set;
+    if (nodeType.includes('manualTrigger')) return nodeTypes.manualTrigger;
+    if (nodeType.includes('gmail')) return nodeTypes.gmail;
+    if (nodeType.includes('trigger')) return nodeTypes.trigger;
+    if (nodeType.includes('action')) return nodeTypes.action;
+    if (nodeType.includes('format')) return nodeTypes.format;
+    if (nodeType.includes('build')) return nodeTypes.build;
+    if (nodeType.includes('api')) return nodeTypes.api;
     
-    // Fallback for other types
-    return nodeTypes[type as keyof typeof nodeTypes] || {
-      name: type.split('.').pop() || 'Unknown',
-      color: 'bg-gray-600',
-      icon: <Settings className="h-4 w-4 text-white" />,
-      shape: 'pill',
-      isTrigger: false
-    };
+    // Default to function type
+    return nodeTypes.function;
   }, [nodeTypes]);
 
-  const handleNodeClick = useCallback((node: WorkflowNode) => {
-    // In read-only mode, just show basic info or do nothing
+  const createCurvedPath = useCallback((startX: number, startY: number, endX: number, endY: number) => {
+    const midX = (startX + endX) / 2;
+    const controlPoint1X = startX + (midX - startX) * 0.5;
+    const controlPoint1Y = startY;
+    const controlPoint2X = midX + (endX - midX) * 0.5;
+    const controlPoint2Y = endY;
+    
+    return `M ${startX} ${startY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${endX} ${endY}`;
   }, []);
 
-  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const createRightAngledPath = useCallback((startX: number, startY: number, endX: number, endY: number) => {
+    const midX = (startX + endX) / 2;
+    return `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
   }, []);
+
+  const handleNodeClick = useCallback((node: WorkflowNode) => {
+    setSelectedNode(selectedNode?.id === node.id ? null : node);
+  }, [selectedNode]);
 
   const handleZoomIn = useCallback(() => {
-    setZoom(prev => Math.min(prev + 0.2, 2));
+    setZoom(prev => Math.min(prev * 1.2, 3));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setZoom(prev => Math.max(prev - 0.2, 0.5));
+    setZoom(prev => Math.max(prev / 1.2, 0.3));
   }, []);
 
   const handleResetView = useCallback(() => {
@@ -153,24 +166,21 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+    if (e.button === 0) { // Left click only
       setIsPanning(true);
       setLastPanPoint({ x: e.clientX, y: e.clientY });
-      e.preventDefault();
     }
   }, []);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isPanning) {
       const deltaX = e.clientX - lastPanPoint.x;
       const deltaY = e.clientY - lastPanPoint.y;
       
-      requestAnimationFrame(() => {
-        setPan(prev => ({
-          x: prev.x + deltaX,
-          y: prev.y + deltaY
-        }));
-      });
+      setPan(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
       
       setLastPanPoint({ x: e.clientX, y: e.clientY });
     }
@@ -180,116 +190,86 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
     setIsPanning(false);
   }, []);
 
-  const handleWheel = useCallback((e: WheelEvent) => {
-    if (e.ctrlKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      
-      requestAnimationFrame(() => {
-        setZoom(prev => Math.max(0.5, Math.min(2, prev + delta)));
-      });
-    }
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(prev => Math.max(0.3, Math.min(3, prev * delta)));
   }, []);
 
-  // Memoize transform style to avoid recalculations
-  const canvasTransform = useMemo(() => ({
-    transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
-    transformOrigin: '0 0',
-    willChange: isPanning ? 'transform' : 'auto'
-  }), [pan.x, pan.y, zoom, isPanning]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.addEventListener('wheel', handleWheel, { passive: false });
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        canvas.removeEventListener('wheel', handleWheel);
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [handleWheel, handleMouseMove, handleMouseUp]);
-
-  // Enhanced edge rendering with n8n style (right-angled connections)
-  const renderEdges = useMemo(() => {
-    return workflow.edges.map((edge) => {
-      const sourceNode = workflow.nodes.find(n => n.id === edge.source);
-      const targetNode = workflow.nodes.find(n => n.id === edge.target);
-      
-      if (!sourceNode || !targetNode) return null;
-      
-      const sourcePos = nodePositionsRef.current.get(sourceNode.id) || sourceNode.position;
-      const targetPos = nodePositionsRef.current.get(targetNode.id) || targetNode.position;
-      
-      // Source node output point (right side)
-      const sourceWidth = 160;
-      const startX = sourcePos.x + sourceWidth;
-      const startY = sourcePos.y + 40;
-      
-      // Target node input point (left side)
-      const endX = targetPos.x;
-      const endY = targetPos.y + 40;
-      
-      // Create right-angled path like n8n
-      const pathData = createRightAngledPath(startX, startY, endX, endY);
-      
-      // Calculate arrow head
-      const arrowSize = 6;
-      const angle = Math.atan2(endY - startY, endX - startX);
-      const arrowX = endX - arrowSize * Math.cos(angle);
-      const arrowY = endY - arrowSize * Math.sin(angle);
-      
-      const arrowPath = `M ${arrowX} ${arrowY} L ${arrowX - arrowSize * Math.cos(angle - Math.PI/6)} ${arrowY - arrowSize * Math.sin(angle - Math.PI/6)} L ${arrowX - arrowSize * Math.cos(angle + Math.PI/6)} ${arrowY - arrowSize * Math.sin(angle + Math.PI/6)} Z`;
-      
-      return (
-        <g key={edge.id} className="edge-group">
-          {/* Main connection line - n8n style with right angles */}
-          <path
-            d={pathData}
-            stroke="#606060"
-            strokeWidth="2"
-            fill="none"
-            className="drop-shadow-sm"
-          />
-          
-          {/* Arrow head */}
-          <path
-            d={arrowPath}
-            fill="#606060"
-            className="drop-shadow-sm"
-          />
-        </g>
-      );
-    });
-  }, [workflow.edges, workflow.nodes]);
-
-  // Create right-angled path like n8n
-  const createRightAngledPath = useCallback((x1: number, y1: number, x2: number, y2: number) => {
-    const midX = (x1 + x2) / 2;
+  // Generate edges from workflow connections
+  const edges = useMemo(() => {
+    const edges: JSX.Element[] = [];
     
-    // Create path with right angles: horizontal -> vertical -> horizontal
-    return `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
-  }, []);
+    // Convert n8n connections format to edges for rendering
+    Object.entries(workflow.connections).forEach(([sourceNodeName, connections]) => {
+      const sourceNode = workflow.nodes.find(n => n.name === sourceNodeName);
+      if (!sourceNode) return;
+      
+      connections.main.forEach((mainConnections, outputIndex) => {
+        mainConnections.forEach((connection, connectionIndex) => {
+          const targetNode = workflow.nodes.find(n => n.name === connection.node);
+          if (!targetNode) return;
+          
+          const sourceNodeType = getNodeType(sourceNode.type);
+          const targetNodeType = getNodeType(targetNode.type);
+          
+          // Calculate connection points based on node positions and types
+          const sourcePos = nodePositionsRef.current.get(sourceNode.id) || sourceNode.position;
+          const targetPos = nodePositionsRef.current.get(targetNode.id) || targetNode.position;
+          
+          // Source node output point (right side)
+          const sourceWidth = sourceNodeType.isTrigger ? 160 : 140;
+          const startX = sourcePos.x + sourceWidth;
+          const startY = sourcePos.y + 35; // Node height / 2 (70/2)
+          
+          // Target node input point (left side) - Only for non-trigger nodes
+          const endX = targetPos.x;
+          const endY = targetPos.y + 35; // Node height / 2 (70/2)
+          
+          // Create smooth curved path like original
+          const pathData = createCurvedPath(startX, startY, endX, endY);
+          
+          // Calculate arrow head
+          const arrowSize = 8;
+          const angle = Math.atan2(endY - startY, endX - startX);
+          const arrowX = endX - arrowSize * Math.cos(angle);
+          const arrowY = endY - arrowSize * Math.sin(angle);
+          
+          const arrowPath = `M ${arrowX} ${arrowY} L ${arrowX - arrowSize * Math.cos(angle - Math.PI/6)} ${arrowY - arrowSize * Math.sin(angle - Math.PI/6)} L ${arrowX - arrowSize * Math.cos(angle + Math.PI/6)} ${arrowY - arrowSize * Math.sin(angle + Math.PI/6)} Z`;
+          
+          const edgeKey = `${sourceNode.id}-${targetNode.id}-${outputIndex}-${connectionIndex}`;
+          
+          edges.push(
+            <g key={edgeKey} className="edge-group">
+              {/* Main connection line - original style */}
+              <path
+                d={pathData}
+                stroke="#6B7280"
+                strokeWidth="3"
+                fill="none"
+                className="drop-shadow-sm"
+              />
+              
+              {/* Arrow head */}
+              <path
+                d={arrowPath}
+                fill="#6B7280"
+                className="drop-shadow-sm"
+              />
+            </g>
+          );
+        });
+      });
+    });
+    
+    return edges;
+  }, [workflow.connections, workflow.nodes, getNodeType, createCurvedPath]);
 
-  // Memoized individual node component with authentic n8n style
-  const NodeComponent = useMemo(() => memo(({ 
-    node, 
-    nodeType, 
-    isDragging, 
-    isSelected, 
-    onNodeClick
-  }: {
-    node: WorkflowNode;
-    nodeType: any;
-    isDragging: boolean;
-    isSelected: boolean;
-    onNodeClick: (node: WorkflowNode) => void;
-  }) => {
-    const nodeWidth = 160;
-    const nodeHeight = 80;
+  // Render nodes
+  const renderedNodes = useMemo(() => workflow.nodes.map(node => {
+    const nodeType = getNodeType(node.type);
+    const isTrigger = nodeType.isTrigger;
+    const isSelected = selectedNode?.id === node.id;
     
     return (
       <div
@@ -300,58 +280,51 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
         style={{
           left: node.position.x,
           top: node.position.y,
-          width: nodeWidth,
-          height: nodeHeight,
+          width: 160,
+          height: 80,
           transition: 'all 0.2s ease-out',
         }}
-        onClick={() => onNodeClick(node)}
+        onClick={() => handleNodeClick(node)}
       >
-        {/* Node Header - n8n style with icon on the left */}
-        <div className="px-4 py-3 h-full flex items-center gap-3">
-          {/* Icon container - left side */}
-          <div className={`w-8 h-8 ${nodeType.color} rounded-full flex items-center justify-center flex-shrink-0`}>
-            {nodeType.icon}
-          </div>
-          
-          {/* Node content - right side */}
-          <div className="flex-1 min-w-0">
-                      {/* Node name */}
-          <h4 className="font-bold text-[#101330] text-sm truncate w-full mb-1">{node.name}</h4>
-            
-                         {/* Additional info for specific node types - based on n8n JSON */}
-             {node.type.includes('n8n-nodes-base.webhook') && (
-               <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
-                 POST
-               </div>
-             )}
-             
-             {node.type.includes('n8n-nodes-base.httpRequest') && (
-               <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-md truncate w-full">
-                 {node.data?.method || 'GET'}: {node.data?.url ? node.data.url.split('/')[2] || 'API' : 'HTTP Request'}
-               </div>
-             )}
-             
-             {node.type.includes('n8n-nodes-base.function') && (
-               <div className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-md">
-                 Function
-               </div>
-             )}
-             
-             {node.type.includes('n8n-nodes-base.set') && (
-               <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-md">
-                 manual
-               </div>
-             )}
-          </div>
+        {/* Node Header - colored background with icon */}
+        <div 
+          className={`px-3 py-2 ${nodeType.color} text-white rounded-t-lg flex flex-col items-center justify-center text-center ${
+            isTrigger ? 'rounded-l-none' : ''
+          }`}
+          style={{ height: '35px' }}
+        >
+          {/* Icon centered at top */}
+          <span className="text-lg">{nodeType.icon}</span>
         </div>
         
-        {/* Input Connection Point (Left) */}
-        <div 
-          className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-sm"
-          data-node-id={node.id}
-          data-connection-type="input"
-          title="Input Connection"
-        ></div>
+        {/* Node Body - light background with centered content */}
+        <div className="px-3 py-2 cursor-pointer bg-gray-50 rounded-b-lg flex flex-col items-center justify-center text-center" style={{ height: '35px' }}>
+          {/* Node name centered */}
+          <h4 className="font-medium text-[#101330] text-sm truncate w-full">{node.name}</h4>
+          
+          {/* Additional info for specific node types */}
+          {node.type.includes('webhook') && node.parameters?.method && (
+            <div className="mt-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+              {node.parameters.method}
+            </div>
+          )}
+          
+          {node.type.includes('httpRequest') && node.parameters?.url && (
+            <div className="mt-1 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded truncate w-full">
+              {node.parameters.method || 'GET'}: {node.parameters.url}
+            </div>
+          )}
+        </div>
+        
+        {/* Input Connection Point (Left) - Only for non-trigger nodes */}
+        {!isTrigger && (
+          <div 
+            className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-sm"
+            data-node-id={node.id}
+            data-connection-type="input"
+            title="Input Connection"
+          ></div>
+        )}
         
         {/* Output Connection Point (Right) */}
         <div 
@@ -362,7 +335,7 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
         ></div>
       </div>
     );
-  }), []);
+  }), [workflow.nodes, getNodeType, selectedNode, handleNodeClick]);
 
   return (
     <div className="h-full flex bg-gray-50">
@@ -398,7 +371,7 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
                   className="p-2 hover:bg-white rounded transition-colors"
                   title="Zoom In"
                 >
-                  <ZoomIn className="h-4 w-4 text-[#6B7280]" />
+                  <ZoomIn className="h-4 w-4 text-white" />
                 </button>
                 <div className="w-px h-5 bg-gray-300 mx-1"></div>
                 <button
@@ -413,87 +386,54 @@ export const WorkflowCanvas = memo(function WorkflowCanvas({ workflow, onUpdateW
           </div>
         </div>
 
-        {/* Canvas - n8n style */}
-        <div className="pt-24 h-full">
-          <div 
-            ref={canvasRef}
-            className={`relative w-full h-full bg-white overflow-hidden ${
-              isPanning ? 'cursor-grabbing' : 'cursor-grab'
-            }`}
-            onMouseDown={handleMouseDown}
-            onClick={handleCanvasClick}
-            style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
-          >
-            {/* Grid Pattern - n8n style light theme */}
-            <div 
-              className="absolute inset-0 opacity-10"
-              style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                backgroundImage: `
-                  linear-gradient(rgba(107, 114, 128, 0.3) 1px, transparent 1px),
-                  linear-gradient(90deg, rgba(107, 114, 128, 0.3) 1px, transparent 1px)
-                `,
-                backgroundSize: '20px 20px'
-              }}
-            ></div>
-            
-            {/* Edges SVG */}
-            <svg
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                transformOrigin: '0 0'
-              }}
-            >
-              {renderEdges}
-            </svg>
-            
-            {/* Nodes */}
-            <div 
-              style={canvasTransform}
-              className="relative"
-            >
-              {workflow.nodes.map((node) => {
-                const nodeType = getNodeType(node.type);
-                const x = node.position.x;
-                const y = node.position.y;
-                const isDragging = false;
-                
-                return (
-                  <NodeComponent
-                    key={node.id}
-                    node={node}
-                    nodeType={nodeType}
-                    isDragging={isDragging}
-                    isSelected={selectedNode?.id === node.id}
-                    onNodeClick={handleNodeClick}
-                  />
-                );
-              })}
-            </div>
-          </div>
+        {/* Canvas Area */}
+        <div
+          ref={canvasRef}
+          className="absolute inset-0 cursor-grab active:cursor-grabbing"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: '0 0'
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
+        >
+          {/* Grid Pattern - n8n style */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#E5E7EB" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+
+          {/* Render edges */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            {edges}
+          </svg>
+
+          {/* Render nodes */}
+          {renderedNodes}
         </div>
 
-        {/* Instructions - n8n style based on JSON */}
-        <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-sm rounded-xl p-5 shadow-xl border border-gray-200">
-          <div className="text-sm text-[#6B7280] space-y-3">
-            <div className="font-semibold text-[#101330] mb-3 text-base">n8n Workflow Viewer</div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-              <span>n8n-nodes-base.webhook - Entrada de dados</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
-              <span>n8n-nodes-base.function - Processamento</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-              <span>n8n-nodes-base.httpRequest - APIs externas</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-orange-600 rounded-full"></div>
-              <span>n8n-nodes-base.set - Retorno de dados</span>
-            </div>
+        {/* Instructions */}
+        <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg p-4 shadow-lg max-w-md">
+          <h3 className="font-semibold text-[#101330] mb-2">Canvas Instructions</h3>
+          <ul className="text-sm text-[#6B7280] space-y-1">
+            <li>• <strong>Drag</strong> to pan around the canvas</li>
+            <li>• <strong>Scroll</strong> to zoom in/out</li>
+            <li>• <strong>Click</strong> nodes to select them</li>
+            <li>• <strong>Right-click</strong> for context menu</li>
+          </ul>
+          <div className="mt-3 text-xs text-[#9CA3AF]">
+            <p><strong>Node Types:</strong></p>
+            <p>• <span className="text-blue-600">Webhook</span> - API endpoints</p>
+            <p>• <span className="text-purple-600">Function</span> - Custom logic</p>
+            <p>• <span className="text-green-600">HTTP Request</span> - API calls</p>
+            <p>• <span className="text-orange-600">Set</span> - Data manipulation</p>
           </div>
         </div>
       </div>

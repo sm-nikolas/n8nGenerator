@@ -264,16 +264,16 @@ function App() {
         ...(shouldGenerateNewWorkflow && workflowToUse ? { workflow: workflowToUse } : {})
       };
       
-                   await addMessage(assistantMessage, workflowToUse?.id);
+      await addMessage(assistantMessage, workflowToUse?.id);
              
-           } catch (error) {
-             showErrorToast('Erro ao processar sua solicitação. Tente novamente.', 'process-request-error');
-             await addMessage({
-               type: 'assistant',
-               content: 'Sorry, there was an error processing your request. Please try again.',
-             });
-           }
-    
+    } catch (error) {
+      showErrorToast('Erro ao processar sua solicitação. Tente novamente.', 'process-request-error');
+      await addMessage({
+        type: 'assistant',
+        content: 'Sorry, there was an error processing your request. Please try again.',
+      });
+    }
+     
     setLoading(false);
   };
 
@@ -302,7 +302,7 @@ function App() {
     }
     
     if (lowerPrompt.includes('delete') || lowerPrompt.includes('remove') || lowerPrompt.includes('deletar') || lowerPrompt.includes('remover')) {
-      return `I can help you remove elements from "${workflow.name}". The workflow currently has ${workflow.nodes.length} nodes and ${workflow.edges.length} connections. What would you like me to remove?`;
+      return `I can help you remove elements from "${workflow.name}". The workflow currently has ${workflow.nodes.length} nodes and ${Object.keys(workflow.connections).length} connections. What would you like me to remove?`;
     }
     
     if (lowerPrompt.includes('test') || lowerPrompt.includes('execute') || lowerPrompt.includes('testar') || lowerPrompt.includes('executar')) {
@@ -314,7 +314,7 @@ function App() {
     }
     
     // Resposta genérica contextual
-    return `I understand you want to discuss "${prompt}" in relation to your workflow "${workflow.name}". This workflow currently has ${workflow.nodes.length} nodes and ${workflow.edges.length} connections. How can I help you with this specific aspect?`;
+    return `I understand you want to discuss "${prompt}" in relation to your workflow "${workflow.name}". This workflow currently has ${workflow.nodes.length} nodes and ${Object.keys(workflow.connections).length} connections. How can I help you with this specific aspect?`;
   };
 
   const handleUpdateWorkflow = async (updatedWorkflow: Workflow) => {

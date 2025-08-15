@@ -129,6 +129,9 @@ export const Sidebar = memo(function Sidebar({
                           <span className="text-xs font-medium text-accent bg-accent/10 px-2 py-0.5 rounded">
                             {workflow.nodes.length} nodes
                           </span>
+                          <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                            {Object.keys(workflow.connections).length} connections
+                          </span>
                         </div>
                       </div>
                     </div>

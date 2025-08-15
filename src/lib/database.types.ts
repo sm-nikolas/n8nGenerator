@@ -35,8 +35,8 @@ export interface Database {
           id: string;
           name: string;
           description: string;
-          nodes: any;
-          connections: any;
+          nodes: WorkflowNode[];
+          connections: WorkflowConnections;
           created_at: string;
           updated_at: string;
           user_id: string;
@@ -47,8 +47,8 @@ export interface Database {
           id?: string;
           name: string;
           description: string;
-          nodes: any;
-          connections: any;
+          nodes: WorkflowNode[];
+          connections: WorkflowConnections;
           created_at?: string;
           updated_at?: string;
           user_id: string;
@@ -59,8 +59,8 @@ export interface Database {
           id?: string;
           name?: string;
           description?: string;
-          nodes?: any;
-          connections?: any;
+          nodes?: WorkflowNode[];
+          connections?: WorkflowConnections;
           created_at?: string;
           updated_at?: string;
           user_id?: string;
@@ -133,5 +133,25 @@ export interface Database {
         };
       };
     };
+  };
+}
+
+// Tipos específicos para n8n
+export interface WorkflowNode {
+  id: string;
+  name: string;
+  type: string;
+  typeVersion?: number;
+  position: [number, number];
+  parameters: Record<string, any>;
+}
+
+export interface WorkflowConnections {
+  [nodeName: string]: {
+    main: Array<Array<{
+      node: string;
+      type: string;
+      index: number;
+    }>>;
   };
 }

@@ -3,7 +3,7 @@ export interface Workflow {
   name: string;
   description: string;
   nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
+  connections: WorkflowConnections;
   createdAt: string;
   updatedAt: string;
   userId: string;
@@ -13,14 +13,19 @@ export interface WorkflowNode {
   id: string;
   type: string;
   name: string;
+  typeVersion?: number;
   position: { x: number; y: number };
-  data: Record<string, any>;
+  parameters: Record<string, any>;
 }
 
-export interface WorkflowEdge {
-  id: string;
-  source: string;
-  target: string;
+export interface WorkflowConnections {
+  [nodeName: string]: {
+    main: Array<Array<{
+      node: string;
+      type: string;
+      index: number;
+    }>>;
+  };
 }
 
 export interface Message {
