@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
 import { useAuth } from './hooks/useAuth';
 import { useWorkflows } from './hooks/useWorkflows';
 import { useMessages } from './hooks/useMessages';
@@ -24,7 +24,7 @@ import { generateMockWorkflow } from './data/mockWorkflows';
 function App() {
   const { user, loading: authLoading } = useAuth();
   const { workflows, saveWorkflow, deleteWorkflow } = useWorkflows(user?.id);
-  const { messages, saveMessage, clearMessages, fetchMessagesForWorkflow, addMessageToState } = useMessages(user?.id);
+  const { messages, saveMessage, clearMessages, fetchMessagesForWorkflow } = useMessages(user?.id);
   
   const {
     currentWorkflow,
@@ -190,10 +190,10 @@ function App() {
         .eq('user_id', user.id);
       
       if (error) {
-        showErrorToast('Erro ao atualizar mensagem. Tente novamente.', 'update-message-error');
+        showErrorToast('Error updating message. Please try again.', 'update-message-error');
       }
     } catch (error) {
-      showErrorToast('Erro ao atualizar mensagem. Tente novamente.', 'update-message-error');
+              showErrorToast('Error updating message. Please try again.', 'update-message-error');
     }
   };
 
@@ -283,7 +283,7 @@ function App() {
       await addMessage(assistantMessage, workflowToUse?.id);
              
     } catch (error) {
-      showErrorToast('Erro ao processar sua solicitação. Tente novamente.', 'process-request-error');
+              showErrorToast('Error processing your request. Please try again.', 'process-request-error');
       await addMessage({
         type: 'assistant',
         content: 'Sorry, there was an error processing your request. Please try again.',
@@ -339,9 +339,9 @@ function App() {
     try {
       const savedWorkflow = await saveWorkflow(updatedWorkflow);
       setCurrentWorkflow(savedWorkflow);
-      showSuccessToast('Workflow atualizado com sucesso!', 'workflow-updated');
+              showSuccessToast('Workflow updated successfully!', 'workflow-updated');
     } catch (error) {
-      showErrorToast('Erro ao atualizar workflow. Tente novamente.', 'workflow-update-error');
+              showErrorToast('Error updating workflow. Please try again.', 'workflow-update-error');
     }
   };
 
@@ -355,9 +355,9 @@ function App() {
         resetAppState();
         clearMessages();
       }
-      showSuccessToast('Workflow deletado com sucesso!', 'workflow-deleted');
+              showSuccessToast('Workflow deleted successfully!', 'workflow-deleted');
     } catch (error) {
-      showErrorToast('Erro ao deletar workflow. Tente novamente.', 'workflow-delete-error');
+              showErrorToast('Error deleting workflow. Please try again.', 'workflow-delete-error');
     }
   };
 

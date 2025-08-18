@@ -1,8 +1,11 @@
-import React, { useCallback, memo } from 'react';
-import { User as UserIcon, Menu, LogOut, Settings, Bell, Search, GitBranch, MessageSquare, Eye, Download, Share, Play } from 'lucide-react';
+import React, { useCallback, memo, useState, useRef } from 'react';
+import { User as UserIcon, Menu, LogOut, GitBranch, MessageSquare, Eye, Download, Share } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Workflow } from '../types';
 import { User } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
+import { LogoutPopup } from './LogoutPopup';
+import { toast } from 'react-toastify';
 
 import { ViewType } from '../hooks/useRouter';
 
@@ -22,6 +25,9 @@ export const Header = memo(function Header({
   currentWorkflow 
 }: HeaderProps) {
   const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const [isLogoutPopupOpen, setIsLogoutPopupOpen] = useState(false);
+  const logoutButtonRef = useRef<HTMLButtonElement>(null);
 
   // Get user avatar from Google OAuth metadata
   const getUserAvatar = () => {
@@ -68,17 +74,25 @@ export const Header = memo(function Header({
       navigator.share(shareData);
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert('Link copiado para a área de transferência!');
+      toast.success('Link copied to clipboard!');
     }
   }, [currentWorkflow]);
 
   const handleSignOut = useCallback(async () => {
     await signOut();
-  }, [signOut]);
+    // Limpa a URL redirecionando para a página inicial
+    navigate('/', { replace: true });
+  }, [signOut, navigate]);
 
-  const handleViewChange = useCallback((view: ViewType) => {
-    onViewChange(view);
-  }, [onViewChange]);
+  const openLogoutPopup = useCallback(() => {
+    setIsLogoutPopupOpen(true);
+  }, []);
+
+  const closeLogoutPopup = useCallback(() => {
+    setIsLogoutPopupOpen(false);
+  }, []);
+
+
 
   return (
     <header className="h-14 bg-primary border-b border-gray-700 flex items-center justify-between px-4">
@@ -102,38 +116,38 @@ export const Header = memo(function Header({
       
       <div className="flex items-center gap-4">
         <div className="flex bg-white/10 rounded-lg p-1">
-          <button
-            onClick={() => handleViewChange('chat')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-              activeView === 'chat'
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-white/70 hover:text-white'
-            }`}
-          >
+                      <button
+              onClick={() => onViewChange('chat')}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                activeView === 'chat'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
             <MessageSquare className="h-4 w-4" />
             {currentWorkflow ? 'Conversation' : 'New Chat'}
           </button>
-          <button
-            onClick={() => handleViewChange('workflow')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-              activeView === 'workflow'
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-white/70 hover:text-white hover:bg-white/5'
-            }`}
-            disabled={!currentWorkflow}
-          >
+                      <button
+              onClick={() => onViewChange('workflow')}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                activeView === 'workflow'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
+              disabled={!currentWorkflow}
+            >
             <GitBranch className="h-4 w-4" />
             Canvas
           </button>
-          <button
-            onClick={() => handleViewChange('preview')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-              activeView === 'preview'
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-white/70 hover:text-white hover:bg-white/5'
-            }`}
-            disabled={!currentWorkflow}
-          >
+                      <button
+              onClick={() => onViewChange('preview')}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                activeView === 'preview'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
+              disabled={!currentWorkflow}
+            >
             <Eye className="h-4 w-4" />
             Preview
           </button>
@@ -146,7 +160,7 @@ export const Header = memo(function Header({
               className="btn-ghost flex items-center gap-2 text-sm"
             >
               <Download className="h-4 w-4" />
-              Export
+              Download
             </button>
             <button
               onClick={shareWorkflow}
@@ -154,10 +168,6 @@ export const Header = memo(function Header({
             >
               <Share className="h-4 w-4" />
               Share
-            </button>
-            <button className="btn-primary flex items-center gap-2 text-sm">
-              <Play className="h-4 w-4" />
-              Execute
             </button>
           </div>
         )}
@@ -191,13 +201,22 @@ export const Header = memo(function Header({
             <span className="text-sm text-white">{user.email}</span>
           </div>
           <button
-            onClick={handleSignOut}
-            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors duration-200"
+            ref={logoutButtonRef}
+            onClick={openLogoutPopup}
+            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors duration-200 relative"
             title="Sign Out"
           >
             <LogOut className="h-4 w-4" />
           </button>
         </div>
+        
+        {/* Logout Popup - moved outside to avoid positioning conflicts */}
+        <LogoutPopup
+          isOpen={isLogoutPopupOpen}
+          onClose={closeLogoutPopup}
+          onConfirm={handleSignOut}
+          anchorRef={logoutButtonRef}
+        />
       </div>
     </header>
   );

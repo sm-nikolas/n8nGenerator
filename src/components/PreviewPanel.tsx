@@ -17,7 +17,7 @@ export const PreviewPanel = memo(function PreviewPanel({ workflow }: PreviewPane
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      toast.error('Erro ao copiar para a área de transferência. Tente novamente.');
+      toast.error('Error copying to clipboard. Please try again.');
     }
   }, []);
 

@@ -123,7 +123,7 @@ export const WorkflowCanvas = React.memo(function WorkflowCanvas({ workflow }: W
     return (
       <div className="h-full w-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600">Nenhum workflow fornecido</p>
+          <p className="text-gray-600">No workflow provided</p>
         </div>
       </div>
     );
@@ -274,11 +274,11 @@ const WorkflowCanvasContent = ({ workflow }: WorkflowCanvasProps) => {
       <div className="h-full w-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF4F79] mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando workflow...</p>
+                      <p className="text-gray-600">Loading workflow...</p>
           <p className="text-sm text-gray-500 mt-2">
-            {!workflow ? 'Nenhum workflow fornecido' : 
-             !workflow.nodes ? 'Workflow sem nós' : 
-             `Workflow com ${workflow.nodes.length} nós`}
+            {!workflow ? 'No workflow provided' : 
+                         !workflow.nodes ? 'Workflow without nodes' :
+            `Workflow with ${workflow.nodes.length} nodes`}
           </p>
         </div>
       </div>
@@ -290,8 +290,8 @@ const WorkflowCanvasContent = ({ workflow }: WorkflowCanvasProps) => {
     return (
       <div className="h-full w-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-red-600 mb-2">Erro ao converter nós</p>
-          <p className="text-sm text-gray-500">Verifique o console para mais detalhes</p>
+                      <p className="text-red-600 mb-2">Error converting nodes</p>
+                      <p className="text-sm text-gray-500">Check console for more details</p>
         </div>
       </div>
     );
