@@ -28,9 +28,9 @@ export const PreviewPanel = memo(function PreviewPanel({ workflow }: PreviewPane
     if (format === 'json') {
       content = JSON.stringify(workflow, null, 2);
     } else if (format === 'yaml') {
-      content = `# ${workflow.name}\n# ${workflow.description}\n\nworkflow:\n  id: ${workflow.id}\n  name: ${workflow.name}\n  description: ${workflow.description}\n  nodes: ${workflow.nodes.length}\n  edges: ${workflow.edges.length}`;
+      content = `# ${workflow.name}\n# ${workflow.description}\n\nworkflow:\n  id: ${workflow.id}\n  name: ${workflow.name}\n  description: ${workflow.description}\n  nodes: ${workflow.nodes.length}\n  connections: ${Object.keys(workflow.connections).length}`;
     } else if (format === 'xml') {
-      content = `<?xml version="1.0" encoding="UTF-8"?>\n<workflow id="${workflow.id}" name="${workflow.name}">\n  <description>${workflow.description}</description>\n  <nodes count="${workflow.nodes.length}" />\n  <edges count="${workflow.edges.length}" />\n</workflow>`;
+      content = `<?xml version="1.0" encoding="UTF-8"?>\n<workflow id="${workflow.id}" name="${workflow.name}">\n  <description>${workflow.description}</description>\n  <nodes count="${workflow.nodes.length}" />\n  <connections count="${Object.keys(workflow.connections).length}" />\n</workflow>`;
     }
     
     const blob = new Blob([content], { type: 'text/plain' });
@@ -187,8 +187,8 @@ export const PreviewPanel = memo(function PreviewPanel({ workflow }: PreviewPane
           <div className="max-w-4xl mx-auto">
             <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
               {activeTab === 'yaml' ? 
-                `# ${workflow.name}\n# ${workflow.description}\n\nworkflow:\n  id: ${workflow.id}\n  name: ${workflow.name}\n  description: ${workflow.description}\n  nodes: ${workflow.nodes.length}\n  edges: ${workflow.edges.length}` :
-                `<?xml version="1.0" encoding="UTF-8"?>\n<workflow id="${workflow.id}" name="${workflow.name}">\n  <description>${workflow.description}</description>\n  <nodes count="${workflow.nodes.length}" />\n  <edges count="${workflow.edges.length}" />\n</workflow>`
+                `# ${workflow.name}\n# ${workflow.description}\n\nworkflow:\n  id: ${workflow.id}\n  name: ${workflow.name}\n  description: ${workflow.description}\n  nodes: ${workflow.nodes.length}\n  connections: ${Object.keys(workflow.connections).length}` :
+                `<?xml version="1.0" encoding="UTF-8"?>\n<workflow id="${workflow.id}" name="${workflow.name}">\n  <description>${workflow.description}</description>\n  <nodes count="${workflow.nodes.length}" />\n  <connections count="${Object.keys(workflow.connections).length}" />\n</workflow>`
               }
             </pre>
           </div>
