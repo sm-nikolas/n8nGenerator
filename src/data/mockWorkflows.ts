@@ -1,72 +1,78 @@
 import { Workflow } from '../types';
 
-export const mockWorkflows: Workflow[] = [
+export const generateMockWorkflow = (): Workflow => {
+  return mockWorkflows[0];
+};
+
+const mockWorkflows: Workflow[] = [
   {
-    id: 'qualificar-lead-workflow',
+    id: '550e8400-e29b-41d4-a716-446655440001',
     name: 'Qualificação de Lead B2B SaaS',
-    description: 'Workflow automatizado para qualificar leads empresariais usando múltiplas APIs e IA',
+    description: 'Workflow para qualificar leads B2B usando dados de CNPJ, Google Places e IA',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    userId: '',
     nodes: [
       {
-        id: 'Webhook',
+        id: '550e8400-e29b-41d4-a716-446655440002',
         name: 'Entrada Webhook',
         type: 'n8n-nodes-base.webhook',
+        typeVersion: 1,
         position: { x: 100, y: 300 },
-        data: {
+        parameters: {
           path: 'qualificar-lead',
           method: 'POST',
           responseMode: 'onReceived'
         }
       },
       {
-        id: 'Formatar CNPJ',
+        id: '550e8400-e29b-41d4-a716-446655440003',
         name: 'Limpar CNPJ',
         type: 'n8n-nodes-base.function',
-        position: { x: 300, y: 300 },
-        data: {
-          functionCode: '// Limpa e formata o CNPJ recebido'
+        position: { x: 400, y: 300 },
+        parameters: {
+          functionCode: ''
         }
       },
       {
-        id: 'ReceitaWS',
+        id: '550e8400-e29b-41d4-a716-446655440004',
         name: 'ReceitaWS',
         type: 'n8n-nodes-base.httpRequest',
-        position: { x: 500, y: 100 },
-        data: {
+        position: { x: 700, y: 100 },
+        parameters: {
           url: 'https://www.receitaws.com.br/v1/cnpj={{$json.cnpj}}',
           method: 'GET',
           responseFormat: 'json'
         }
       },
       {
-        id: 'Google Places',
+        id: '550e8400-e29b-41d4-a716-446655440005',
         name: 'Google Places',
         type: 'n8n-nodes-base.httpRequest',
-        position: { x: 500, y: 200 },
-        data: {
+        position: { x: 700, y: 220 },
+        parameters: {
           url: 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input={{$json.nome}}&inputtype=textquery&fields=name,rating,user_ratings_total,formatted_address&key=SUA_GOOGLE_API_KEY',
           method: 'GET',
           responseFormat: 'json'
         }
       },
       {
-        id: 'CNPJ Aberto',
+        id: '550e8400-e29b-41d4-a716-446655440006',
         name: 'CNPJ Aberto',
         type: 'n8n-nodes-base.httpRequest',
-        position: { x: 500, y: 300 },
-        data: {
+        position: { x: 700, y: 340 },
+        parameters: {
           url: 'https://publica.cnpj.ws/cnpj/{{ $json.cnpj }}',
           method: 'GET',
           responseFormat: 'json'
         }
       },
       {
-        id: 'Brave Search',
+        id: '550e8400-e29b-41d4-a716-446655440007',
         name: 'Buscar LinkedIn',
         type: 'n8n-nodes-base.httpRequest',
-        position: { x: 500, y: 400 },
-        data: {
+        position: { x: 700, y: 460 },
+        parameters: {
           url: 'https://api.search.brave.com/res/v1/web/search?q={{$json.nome}} site:linkedin.com&count=3',
           method: 'GET',
           headers: {
@@ -76,33 +82,20 @@ export const mockWorkflows: Workflow[] = [
         }
       },
       {
-        id: 'Criar Prompt DeepSeek',
+        id: '550e8400-e29b-41d4-a716-446655440008',
         name: 'Criar Prompt DeepSeek',
         type: 'n8n-nodes-base.function',
-        position: { x: 700, y: 300 },
-        data: {
-          functionCode: `const dados = {
-  nome: $json.nome,
-  cnpj: $json.cnpj,
-  receita: $items("ReceitaWS")[0].json,
-  google: $items("Google Places")[0].json,
-  cnpjAberto: $items("CNPJ Aberto")[0].json,
-  linkedin: $items("Buscar LinkedIn")[0].json
-};
-
-return [{
-  json: {
-    prompt: \`Avalie a empresa a seguir com base nos dados fornecidos. Determine um score de 0 a 100 sobre o quão qualificada ela parece para ser um lead de produto B2B SaaS.\\n\\n\${JSON.stringify(dados, null, 2)}\\n\\nResponda com um número e uma justificativa curta.\`
-  }
-}];`
+        position: { x: 1000, y: 300 },
+        parameters: {
+          functionCode: 'const dados = \n  nome: $json.nome,\n  cnpj: $json.cnpj,\n  receita: $items("ReceitaWS")[0].json,\n  google: $items("Google Places")[0].json,\n  cnpjAberto: $items("CNPJ Aberto")[0].json,\n  linkedin: $items("Buscar LinkedIn")[0].json\n;\n\nreturn [{\n  json: {\n    prompt: `Avalie a empresa a seguir com base nos dados fornecidos. Determine um score de 0 a 100 sobre o quão qualificada ela parece para ser um lead de produto B2B SaaS.\n\n${JSON.stringify(dados, null, 2)}\n\nResponda com um número e uma justificativa curta.`\n  }\n}];'
         }
       },
       {
-        id: 'DeepSeek',
+        id: '550e8400-e29b-41d4-a716-446655440009',
         name: 'Classificar com DeepSeek',
         type: 'n8n-nodes-base.httpRequest',
-        position: { x: 900, y: 300 },
-        data: {
+        position: { x: 1300, y: 300 },
+        parameters: {
           url: 'https://api.deepseek.com/v1/chat/completions',
           method: 'POST',
           responseFormat: 'json',
@@ -110,36 +103,34 @@ return [{
             'Authorization': 'Bearer SUA_DEEPSEEK_API_KEY',
             'Content-Type': 'application/json'
           },
+          jsonParameters: true,
           bodyParametersJson: {
-            model: 'deepseek-chat',
-            messages: [
+            'model': 'deepseek-chat',
+            'messages': [
               {
-                role: 'user',
-                content: '={{$json.prompt}}'
+                'role': 'user',
+                'content': '={{$json.prompt}}'
               }
             ],
-            temperature: 0.3
+            'temperature': 0.3
           }
         }
       },
       {
-        id: 'Extrair Score',
+        id: '550e8400-e29b-41d4-a716-446655440010',
         name: 'Extrair Score',
         type: 'n8n-nodes-base.function',
-        position: { x: 1100, y: 300 },
-        data: {
-          functionCode: `const texto = $json.choices?.[0]?.message?.content || "";
-const match = texto.match(/(\\d{1,3})/);
-const score = match ? parseInt(match[1]) : null;
-return [{ json: { ...$json, score, motivo: texto } }];`
+        position: { x: 1600, y: 300 },
+        parameters: {
+          functionCode: 'const texto = $json.choices?.[0]?.message?.content || "";\nconst match = texto.match(/(\\d{1,3})/);\nconst score = match ? parseInt(match[1]) : null;\nreturn [{ json: { ...$json, score, motivo: texto } }];'
         }
       },
       {
-        id: 'Retorno',
+        id: '550e8400-e29b-41d4-a716-446655440011',
         name: 'Retornar Resultado',
         type: 'n8n-nodes-base.set',
-        position: { x: 1300, y: 300 },
-        data: {
+        position: { x: 1900, y: 300 },
+        parameters: {
           values: {
             json: {
               nome: '={{$json.nome}}',
@@ -151,208 +142,43 @@ return [{ json: { ...$json, score, motivo: texto } }];`
         }
       }
     ],
-    edges: [
-      {
-        id: 'webhook-to-format',
-        source: 'Webhook',
-        target: 'Formatar CNPJ'
+    connections: {
+      'Entrada Webhook': {
+        main: [
+          [{ node: 'Limpar CNPJ', type: 'main', index: 0 }]
+        ]
       },
-      {
-        id: 'format-to-receita',
-        source: 'Formatar CNPJ',
-        target: 'ReceitaWS'
+      'Limpar CNPJ': {
+        main: [
+          [
+            { node: 'ReceitaWS', type: 'main', index: 0 },
+            { node: 'Google Places', type: 'main', index: 0 },
+            { node: 'CNPJ Aberto', type: 'main', index: 0 },
+            { node: 'Buscar LinkedIn', type: 'main', index: 0 }
+          ]
+        ]
       },
-      {
-        id: 'format-to-google',
-        source: 'Formatar CNPJ',
-        target: 'Google Places'
+      'ReceitaWS': {
+        main: [[{ node: 'Criar Prompt DeepSeek', type: 'main', index: 0 }]]
       },
-      {
-        id: 'format-to-cnpj-aberto',
-        source: 'Formatar CNPJ',
-        target: 'CNPJ Aberto'
+      'Google Places': {
+        main: [[{ node: 'Criar Prompt DeepSeek', type: 'main', index: 0 }]]
       },
-      {
-        id: 'format-to-linkedin',
-        source: 'Formatar CNPJ',
-        target: 'Buscar LinkedIn'
+      'CNPJ Aberto': {
+        main: [[{ node: 'Criar Prompt DeepSeek', type: 'main', index: 0 }]]
       },
-      {
-        id: 'receita-to-prompt',
-        source: 'ReceitaWS',
-        target: 'Criar Prompt DeepSeek'
+      'Buscar LinkedIn': {
+        main: [[{ node: 'Criar Prompt DeepSeek', type: 'main', index: 0 }]]
       },
-      {
-        id: 'google-to-prompt',
-        source: 'Google Places',
-        target: 'Criar Prompt DeepSeek'
+      'Criar Prompt DeepSeek': {
+        main: [[{ node: 'Classificar com DeepSeek', type: 'main', index: 0 }]]
       },
-      {
-        id: 'cnpj-aberto-to-prompt',
-        source: 'CNPJ Aberto',
-        target: 'Criar Prompt DeepSeek'
+      'Classificar com DeepSeek': {
+        main: [[{ node: 'Extrair Score', type: 'main', index: 0 }]]
       },
-      {
-        id: 'linkedin-to-prompt',
-        source: 'Buscar LinkedIn',
-        target: 'Criar Prompt DeepSeek'
-      },
-      {
-        id: 'prompt-to-deepseek',
-        source: 'Criar Prompt DeepSeek',
-        target: 'Classificar com DeepSeek'
-      },
-      {
-        id: 'deepseek-to-extract',
-        source: 'Classificar com DeepSeek',
-        target: 'Extrair Score'
-      },
-      {
-        id: 'extract-to-return',
-        source: 'Extrair Score',
-        target: 'Retornar Resultado'
+      'Extrair Score': {
+        main: [[{ node: 'Retornar Resultado', type: 'main', index: 0 }]]
       }
-    ]
-  },
-  {
-    id: 'ecommerce-automation',
-    name: 'Automação de E-commerce',
-    description: 'Workflow para automatizar processos de vendas e estoque',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    nodes: [
-      {
-        id: 'webhook-ecommerce',
-        name: 'Webhook de Pedido',
-        type: 'n8n-nodes-base.webhook',
-        position: { x: 100, y: 200 },
-        data: {
-          path: 'novo-pedido',
-          method: 'POST'
-        }
-      },
-      {
-        id: 'validate-order',
-        name: 'Validar Pedido',
-        type: 'n8n-nodes-base.function',
-        position: { x: 300, y: 200 },
-        data: {
-          functionCode: '// Valida dados do pedido'
-        }
-      },
-      {
-        id: 'check-stock',
-        name: 'Verificar Estoque',
-        type: 'n8n-nodes-base.httpRequest',
-        position: { x: 500, y: 200 },
-        data: {
-          url: 'https://api.estoque.com/check',
-          method: 'POST'
-        }
-      },
-      {
-        id: 'send-notification',
-        name: 'Enviar Notificação',
-        type: 'n8n-nodes-base.set',
-        position: { x: 700, y: 200 },
-        data: {
-          values: {
-            json: {
-              status: 'Pedido processado'
-            }
-          }
-        }
-      }
-    ],
-    edges: [
-      {
-        id: 'webhook-to-validate',
-        source: 'webhook-ecommerce',
-        target: 'validate-order'
-      },
-      {
-        id: 'validate-to-stock',
-        source: 'validate-order',
-        target: 'check-stock'
-      },
-      {
-        id: 'stock-to-notification',
-        source: 'check-stock',
-        target: 'send-notification'
-      }
-    ]
-  },
-  {
-    id: 'social-media-monitor',
-    name: 'Monitor de Redes Sociais',
-    description: 'Monitoramento e análise de menções em redes sociais',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    nodes: [
-      {
-        id: 'twitter-webhook',
-        name: 'Webhook Twitter',
-        type: 'n8n-nodes-base.webhook',
-        position: { x: 100, y: 150 },
-        data: {
-          path: 'twitter-mentions',
-          method: 'POST'
-        }
-      },
-      {
-        id: 'sentiment-analysis',
-        name: 'Análise de Sentimento',
-        type: 'n8n-nodes-base.function',
-        position: { x: 300, y: 150 },
-        data: {
-          functionCode: '// Analisa sentimento do tweet'
-        }
-      },
-      {
-        id: 'openai-analysis',
-        name: 'Análise OpenAI',
-        type: 'n8n-nodes-base.httpRequest',
-        position: { x: 500, y: 150 },
-        data: {
-          url: 'https://api.openai.com/v1/chat/completions',
-          method: 'POST'
-        }
-      },
-      {
-        id: 'store-result',
-        name: 'Armazenar Resultado',
-        type: 'n8n-nodes-base.set',
-        position: { x: 700, y: 150 },
-        data: {
-          values: {
-            json: {
-              analysis: 'Análise completa'
-            }
-          }
-        }
-      }
-    ],
-    edges: [
-      {
-        id: 'twitter-to-sentiment',
-        source: 'twitter-webhook',
-        target: 'sentiment-analysis'
-      },
-      {
-        id: 'sentiment-to-openai',
-        source: 'sentiment-analysis',
-        target: 'openai-analysis'
-      },
-      {
-        id: 'openai-to-store',
-        source: 'openai-analysis',
-        target: 'store-result'
-      }
-    ]
+    }
   }
 ];
-
-// Função para gerar workflow mockado baseado no JSON do n8n
-export function generateMockWorkflow(): Workflow {
-  return mockWorkflows[0]; // Retorna o workflow de qualificação de leads
-}

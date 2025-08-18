@@ -88,6 +88,22 @@ function App() {
     restoreWorkflow();
   }, [user, workflows, setCurrentWorkflow, fetchMessagesForWorkflow]);
 
+  // Carregar workflow mock padrão se não houver workflow ativo
+  useEffect(() => {
+    if (user && !currentWorkflow && workflows.length === 0) {
+      const loadDefaultWorkflow = async () => {
+        try {
+          const defaultWorkflow = generateMockWorkflow();
+          const savedWorkflow = await saveWorkflow(defaultWorkflow);
+          setCurrentWorkflow(savedWorkflow);
+        } catch (error) {
+          // Silently handle error
+        }
+      };
+      
+      loadDefaultWorkflow();
+    }
+  }, [user, currentWorkflow, workflows.length, saveWorkflow, setCurrentWorkflow]);
 
 
   // Carregar mensagens quando o workflow mudar

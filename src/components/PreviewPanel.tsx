@@ -54,14 +54,6 @@ export const PreviewPanel = memo(function PreviewPanel({ workflow }: PreviewPane
     });
   }, []);
 
-  const getWorkflowStats = useCallback(() => {
-    return {
-      nodes: workflow.nodes.length,
-      edges: workflow.edges.length,
-      complexity: workflow.edges.length > workflow.nodes.length ? 'High' : 'Low'
-    };
-  }, [workflow]);
-
   return (
     <div className="h-full flex flex-col bg-[#F9FAFB]">
       <div className="p-3 border-b border-gray-200 bg-white">
