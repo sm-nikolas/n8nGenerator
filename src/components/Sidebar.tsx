@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Workflow } from '../types'; // Removido Conversation
-import { Plus, Clock, GitBranch, Trash2, Zap, Database, Mail } from 'lucide-react';
+import { Plus, Clock, GitBranch, Trash2 } from 'lucide-react';
 
 interface SidebarProps {
   workflows: Workflow[];
@@ -42,26 +42,7 @@ export const Sidebar = memo(function Sidebar({
     onSelectWorkflow(workflow);
   }, [onSelectWorkflow]);
 
-  const templates = [
-    {
-      name: 'API Integration',
-      description: 'Connect external APIs',
-      icon: Zap,
-      color: 'bg-blue-500'
-    },
-    {
-      name: 'Data Processing',
-      description: 'Transform data automatically',
-      icon: Database,
-      color: 'bg-green-500'
-    },
-    {
-      name: 'Email Automation',
-      description: 'Automated notifications',
-      icon: Mail,
-      color: 'bg-purple-500'
-    }
-  ];
+
 
   return (
     <div className="w-80 bg-[#F9FAFB] border-r border-gray-200 flex flex-col h-full">
@@ -141,32 +122,7 @@ export const Sidebar = memo(function Sidebar({
             )}
           </div>
           
-          <div>
-            <h3 className="text-sm font-semibold text-primary mb-3">Templates</h3>
-            
-            <div className="space-y-2">
-              {templates.map((template, index) => (
-                <div
-                  key={index}
-                  className="card p-3 cursor-pointer hover:shadow-sm transition-shadow duration-200"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 ${template.color} rounded-lg flex items-center justify-center`}>
-                      <template.icon className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-primary text-sm">
-                        {template.name}
-                      </h4>
-                      <p className="text-xs text-secondary">
-                        {template.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
